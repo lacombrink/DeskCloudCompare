@@ -4,6 +4,7 @@
              xmlns:helpers="clr-namespace:DeskCloudCompare.Helpers">
 
     <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <helpers:BindingProxy x:Key="Proxy" Data="{Binding}" />
 
         <Style x:Key="ResultCellStyle" TargetType="TextBlock">
