@@ -44,6 +44,7 @@ public partial class App : Application
         services.AddTransient<PresetService>();
         services.AddTransient<FolderScanService>();
         services.AddTransient<BinaryCompareService>();
+        services.AddTransient<SpecialFileRuleService>();
 
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<PresetsViewModel>();

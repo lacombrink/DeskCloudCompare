@@ -12,6 +12,8 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="5" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="5" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <!-- Folder Types -->
@@ -50,6 +52,7 @@
 
         <!-- Path Translation Rules -->
         <GroupBox Grid.Row="2" Header="Path Translation Rules">
+
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -112,6 +115,64 @@
 
                         <DataGridTextColumn Header="Order" Width="60"
                                             Binding="{Binding SortOrder, UpdateSourceTrigger=PropertyChanged}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </GroupBox>
+
+        <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="5" />
+
+        <!-- Special File Rules -->
+        <GroupBox Grid.Row="4" Header="Special File Rules">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,4,0,4">
+                    <Button Content="Add" Width="70" Margin="0,0,4,0"
+                            Command="{Binding AddSpecialRuleCommand}" />
+                    <Button Content="Delete" Width="70" Margin="0,0,4,0"
+                            Command="{Binding DeleteSpecialRuleCommand}" />
+                    <Button Content="Save" Width="70"
+                            Command="{Binding SaveSpecialRulesCommand}" />
+                </StackPanel>
+
+                <DataGrid Grid.Row="1"
+                          ItemsSource="{Binding SpecialFileRules}"
+                          SelectedItem="{Binding SelectedSpecialRule}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          AlternatingRowBackground="#F5F5F5"
+                          GridLinesVisibility="All">
+                    <DataGrid.Columns>
+
+                        <DataGridTextColumn Header="Description" Width="*"
+                                            Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <DataGridTextColumn Header="File Name Pattern" Width="*"
+                                            Binding="{Binding FileNamePattern, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <DataGridTemplateColumn Header="Rule Type" Width="140">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding RuleType}" Margin="4,0" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding DataContext.RuleTypeOptions, Source={StaticResource Proxy}}"
+                                              SelectedItem="{Binding RuleType, UpdateSourceTrigger=PropertyChanged}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridCheckBoxColumn Header="Active" Width="60"
+                                               Binding="{Binding IsActive, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <DataGridTextColumn Header="Notes" Width="*"
+                                            Binding="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>

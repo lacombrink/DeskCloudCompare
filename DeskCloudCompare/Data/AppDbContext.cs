@@ -11,6 +11,9 @@ public class AppDbContext : DbContext
     public DbSet<PathTranslationRule> PathTranslationRules => Set<PathTranslationRule>();
     public DbSet<FolderPreset> FolderPresets => Set<FolderPreset>();
     public DbSet<FolderPresetSlot> FolderPresetSlots => Set<FolderPresetSlot>();
+    public DbSet<SpecialFileRule> SpecialFileRules => Set<SpecialFileRule>();
+    public DbSet<DxdbCsvMapping> DxdbCsvMappings => Set<DxdbCsvMapping>();
+    public DbSet<FieldMapping> FieldMappings => Set<FieldMapping>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +54,26 @@ public class AppDbContext : DbContext
              .WithMany(x => x.Slots)
              .HasForeignKey(x => x.FolderTypeId)
              .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<SpecialFileRule>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FileNamePattern).IsRequired();
+        });
+
+        modelBuilder.Entity<DxdbCsvMapping>(e =>
+        {
+            e.HasKey(x => x.Id);
+        });
+
+        modelBuilder.Entity<FieldMapping>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.DxdbCsvMapping)
+             .WithMany(x => x.FieldMappings)
+             .HasForeignKey(x => x.DxdbCsvMappingId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Seed a default "Canonical" folder type as the normalization pivot

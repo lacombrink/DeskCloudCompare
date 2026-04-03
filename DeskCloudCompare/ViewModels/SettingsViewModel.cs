@@ -11,21 +11,28 @@ public partial class SettingsViewModel : ObservableObject
 {
     private readonly FolderTypeService _folderTypeService;
     private readonly PathTranslationService _pathTranslationService;
+    private readonly SpecialFileRuleService _specialFileRuleService;
 
     public ObservableCollection<FolderTypeRowViewModel> FolderTypes { get; } = new();
     public ObservableCollection<PathTranslationRuleRowViewModel> TranslationRules { get; } = new();
     public ObservableCollection<FolderType> FolderTypeOptions { get; } = new();
+    public ObservableCollection<SpecialFileRule> SpecialFileRules { get; } = new();
 
-    [ObservableProperty]
-    private FolderTypeRowViewModel? _selectedFolderType;
+    public IEnumerable<SpecialRuleType> RuleTypeOptions { get; } =
+        Enum.GetValues<SpecialRuleType>();
 
-    [ObservableProperty]
-    private PathTranslationRuleRowViewModel? _selectedRule;
+    [ObservableProperty] private FolderTypeRowViewModel? _selectedFolderType;
+    [ObservableProperty] private PathTranslationRuleRowViewModel? _selectedRule;
+    [ObservableProperty] private SpecialFileRule? _selectedSpecialRule;
 
-    public SettingsViewModel(FolderTypeService folderTypeService, PathTranslationService pathTranslationService)
+    public SettingsViewModel(
+        FolderTypeService folderTypeService,
+        PathTranslationService pathTranslationService,
+        SpecialFileRuleService specialFileRuleService)
     {
         _folderTypeService = folderTypeService;
         _pathTranslationService = pathTranslationService;
+        _specialFileRuleService = specialFileRuleService;
     }
 
     public async Task LoadAsync()
@@ -43,16 +50,22 @@ public partial class SettingsViewModel : ObservableObject
         TranslationRules.Clear();
         foreach (var r in rules)
             TranslationRules.Add(new PathTranslationRuleRowViewModel(r, FolderTypeOptions));
+
+        var specialRules = await _specialFileRuleService.GetAllAsync();
+        SpecialFileRules.Clear();
+        foreach (var r in specialRules)
+            SpecialFileRules.Add(r);
     }
+
+    // --- Folder Types ---
 
     [RelayCommand]
     private async Task AddFolderType()
     {
         var type = await _folderTypeService.AddAsync("New Type");
-        var row = new FolderTypeRowViewModel(type);
-        FolderTypes.Add(row);
+        FolderTypes.Add(new FolderTypeRowViewModel(type));
         FolderTypeOptions.Add(type);
-        SelectedFolderType = row;
+        SelectedFolderType = FolderTypes.Last();
     }
 
     [RelayCommand]
@@ -72,10 +85,9 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task SaveFolderTypes()
-    {
-        await _folderTypeService.UpdateAsync();
-    }
+    private async Task SaveFolderTypes() => await _folderTypeService.UpdateAsync();
+
+    // --- Path Translation Rules ---
 
     [RelayCommand]
     private void AddRule()
@@ -100,4 +112,33 @@ public partial class SettingsViewModel : ObservableObject
             await _pathTranslationService.AddAsync(row.Entity);
         await _pathTranslationService.UpdateAsync();
     }
+
+    // --- Special File Rules ---
+
+    [RelayCommand]
+    private async Task AddSpecialRule()
+    {
+        var rule = new SpecialFileRule
+        {
+            Description = "New Rule",
+            FileNamePattern = string.Empty,
+            RuleType = SpecialRuleType.OneToMany,
+            IsActive = true
+        };
+        await _specialFileRuleService.AddAsync(rule);
+        SpecialFileRules.Add(rule);
+        SelectedSpecialRule = rule;
+    }
+
+    [RelayCommand]
+    private async Task DeleteSpecialRule()
+    {
+        if (SelectedSpecialRule == null) return;
+        await _specialFileRuleService.DeleteAsync(SelectedSpecialRule.Id);
+        SpecialFileRules.Remove(SelectedSpecialRule);
+        SelectedSpecialRule = null;
+    }
+
+    [RelayCommand]
+    private async Task SaveSpecialRules() => await _specialFileRuleService.UpdateAsync();
 }

@@ -14,6 +14,7 @@ public partial class ComparisonViewModel : ObservableObject
     private readonly FolderScanService _scanService;
     private readonly BinaryCompareService _binaryService;
     private readonly PathTranslationService _pathTranslationService;
+    private readonly SpecialFileRuleService _specialFileRuleService;
 
     private CancellationTokenSource? _cts;
     private ICollectionView? _filteredRows;
@@ -86,11 +87,13 @@ public partial class ComparisonViewModel : ObservableObject
     public ComparisonViewModel(
         FolderScanService scanService,
         BinaryCompareService binaryService,
-        PathTranslationService pathTranslationService)
+        PathTranslationService pathTranslationService,
+        SpecialFileRuleService specialFileRuleService)
     {
         _scanService = scanService;
         _binaryService = binaryService;
         _pathTranslationService = pathTranslationService;
+        _specialFileRuleService = specialFileRuleService;
     }
 
     public void Initialize(IEnumerable<FolderType> folderTypes)
@@ -183,6 +186,7 @@ public partial class ComparisonViewModel : ObservableObject
         try
         {
             var rules = await _pathTranslationService.GetAllAsync();
+            var specialRules = await _specialFileRuleService.GetAllAsync();
             var slotConfigs = Slots.Select(s => new SlotConfig(
                 s.SlotLabel,
                 s.FolderPath ?? string.Empty,
@@ -194,7 +198,7 @@ public partial class ComparisonViewModel : ObservableObject
                 .ToList();
 
             var progress = new Progress<string>(msg => StatusMessage = msg);
-            var scanResults = await _scanService.ScanAsync(slotConfigs, rules, progress, ct);
+            var scanResults = await _scanService.ScanAsync(slotConfigs, rules, specialRules, progress, ct);
 
             foreach (var row in scanResults)
                 Rows.Add(new ComparisonRowViewModel(row, activeLabels));

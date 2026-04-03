@@ -34,7 +34,16 @@ public partial class ComparisonRowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelectedForBinaryCompare;
 
-    public bool NeedsCompare => Result != "All identical";
+    public bool NeedsCompare => Result != "All identical" && !IsOneToMany;
+
+    /// <summary>True when this file exists once in one slot and N times in another slot.</summary>
+    public bool IsOneToMany { get; }
+
+    /// <summary>Total number of copies on the "many" side.</summary>
+    public int OneToManyTotal { get; }
+
+    /// <summary>Number of copies on the "many" side that match the master by size and date.</summary>
+    public int OneToManyMatching { get; }
 
     // Raw paths for binary compare service
     public IReadOnlyDictionary<string, string?> SlotPaths => new Dictionary<string, string?>
@@ -65,7 +74,13 @@ public partial class ComparisonRowViewModel : ObservableObject
         DateC = row.SlotC?.LastWrite;
         DateD = row.SlotD?.LastWrite;
 
-        Result = ComputeResult(row, activeSlotLabels);
+        IsOneToMany = row.IsOneToMany;
+        OneToManyTotal = row.OneToManyTotalCopies;
+        OneToManyMatching = row.OneToManyMatchingCopies;
+
+        Result = row.IsOneToMany
+            ? $"1→{row.OneToManyTotalCopies} copies ({row.OneToManyMatchingCopies}/{row.OneToManyTotalCopies} match)"
+            : ComputeResult(row, activeSlotLabels);
     }
 
     private static string ComputeResult(ComparisonRow row, IReadOnlyList<string> activeSlots)
