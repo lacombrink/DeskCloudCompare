@@ -112,11 +112,14 @@ public partial class ComparisonViewModel : ObservableObject
         }
     }
 
-    public void LoadPreset(FolderPreset preset)
+    private List<PresetExclusion> _activeExclusions = new();
+
+    public void LoadPreset(FolderPreset preset, IEnumerable<PresetExclusion> exclusions)
     {
         Slots.Clear();
         foreach (var slot in preset.Slots.OrderBy(s => s.SlotLabel))
             Slots.Add(new PresetSlotViewModel(slot, FolderTypeOptions));
+        _activeExclusions = exclusions.ToList();
     }
 
     private void RefreshFilters()
@@ -198,7 +201,7 @@ public partial class ComparisonViewModel : ObservableObject
                 .ToList();
 
             var progress = new Progress<string>(msg => StatusMessage = msg);
-            var scanResults = await _scanService.ScanAsync(slotConfigs, rules, specialRules, progress, ct);
+            var scanResults = await _scanService.ScanAsync(slotConfigs, rules, specialRules, _activeExclusions, progress, ct);
 
             foreach (var row in scanResults)
                 Rows.Add(new ComparisonRowViewModel(row, activeLabels));

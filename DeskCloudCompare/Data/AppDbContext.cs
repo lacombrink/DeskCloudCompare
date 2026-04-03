@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     public DbSet<PathTranslationRule> PathTranslationRules => Set<PathTranslationRule>();
     public DbSet<FolderPreset> FolderPresets => Set<FolderPreset>();
     public DbSet<FolderPresetSlot> FolderPresetSlots => Set<FolderPresetSlot>();
+    public DbSet<PresetExclusion> PresetExclusions => Set<PresetExclusion>();
     public DbSet<SpecialFileRule> SpecialFileRules => Set<SpecialFileRule>();
     public DbSet<DxdbCsvMapping> DxdbCsvMappings => Set<DxdbCsvMapping>();
     public DbSet<FieldMapping> FieldMappings => Set<FieldMapping>();
@@ -54,6 +55,15 @@ public class AppDbContext : DbContext
              .WithMany(x => x.Slots)
              .HasForeignKey(x => x.FolderTypeId)
              .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<PresetExclusion>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.Preset)
+             .WithMany(x => x.Exclusions)
+             .HasForeignKey(x => x.PresetId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<SpecialFileRule>(e =>

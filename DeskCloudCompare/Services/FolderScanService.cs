@@ -37,12 +37,15 @@ public class FolderScanService
         IReadOnlyList<SlotConfig> slots,
         IEnumerable<PathTranslationRule> rules,
         IEnumerable<SpecialFileRule>? specialRules = null,
+        IEnumerable<PresetExclusion>? exclusions = null,
         IProgress<string>? progress = null,
         CancellationToken ct = default)
     {
         var rulesList = rules.ToList();
         var specialList = (specialRules ?? Enumerable.Empty<SpecialFileRule>())
             .Where(r => r.IsActive).ToList();
+        var exclusionList = (exclusions ?? Enumerable.Empty<PresetExclusion>())
+            .Where(e => e.IsActive).ToList();
 
         var dict = new Dictionary<string, ComparisonRow>(StringComparer.OrdinalIgnoreCase);
 
@@ -73,6 +76,9 @@ public class FolderScanService
                     var canonical = slot.FolderTypeId.HasValue
                         ? PathTranslationService.Normalize(relPath, slot.FolderTypeId.Value, rulesList)
                         : relPath;
+
+                    if (IsExcluded(canonical, exclusionList))
+                        continue;
 
                     var info = new FileInfo(fullPath);
                     var fileInfo = new SlotFileInfo(fullPath, info.Length, info.LastWriteTime);
@@ -200,4 +206,20 @@ public class FolderScanService
             "D" => row.SlotD,
             _ => null
         };
+
+    private static bool IsExcluded(string canonicalPath, List<PresetExclusion> exclusions)
+    {
+        foreach (var ex in exclusions)
+        {
+            var matched = ex.MatchType switch
+            {
+                ExclusionMatchType.Contains    => canonicalPath.Contains(ex.Pattern, StringComparison.OrdinalIgnoreCase),
+                ExclusionMatchType.StartsWith  => canonicalPath.StartsWith(ex.Pattern, StringComparison.OrdinalIgnoreCase),
+                ExclusionMatchType.EndsWith    => canonicalPath.EndsWith(ex.Pattern, StringComparison.OrdinalIgnoreCase),
+                _ => false
+            };
+            if (matched) return true;
+        }
+        return false;
+    }
 }

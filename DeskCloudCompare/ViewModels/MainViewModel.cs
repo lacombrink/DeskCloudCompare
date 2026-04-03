@@ -25,7 +25,7 @@ public partial class MainViewModel : ObservableObject
         // When user clicks "Load into Comparison" in Presets view
         Presets.LoadPresetRequested += preset =>
         {
-            Comparison.LoadPreset(preset);
+            Comparison.LoadPreset(preset, Presets.Exclusions);
             SelectedTabIndex = 0; // Switch to Comparison tab
         };
     }

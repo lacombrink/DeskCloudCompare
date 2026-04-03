@@ -10,19 +10,23 @@ namespace DeskCloudCompare.ViewModels;
 public partial class PresetsViewModel : ObservableObject
 {
     private readonly PresetService _presetService;
+    private readonly PresetExclusionService _exclusionService;
 
     public ObservableCollection<FolderPreset> Presets { get; } = new();
     public ObservableCollection<PresetSlotViewModel> Slots { get; } = new();
     public ObservableCollection<FolderType> FolderTypeOptions { get; } = new();
+    public ObservableCollection<PresetExclusion> Exclusions { get; } = new();
+    public IEnumerable<ExclusionMatchType> MatchTypeOptions { get; } = Enum.GetValues<ExclusionMatchType>();
 
-    [ObservableProperty]
-    private FolderPreset? _selectedPreset;
+    [ObservableProperty] private FolderPreset? _selectedPreset;
+    [ObservableProperty] private PresetExclusion? _selectedExclusion;
 
     public event Action<FolderPreset>? LoadPresetRequested;
 
-    public PresetsViewModel(PresetService presetService)
+    public PresetsViewModel(PresetService presetService, PresetExclusionService exclusionService)
     {
         _presetService = presetService;
+        _exclusionService = exclusionService;
     }
 
     public async Task LoadAsync(IEnumerable<FolderType> folderTypes)
@@ -40,16 +44,25 @@ public partial class PresetsViewModel : ObservableObject
     partial void OnSelectedPresetChanged(FolderPreset? value)
     {
         Slots.Clear();
+        Exclusions.Clear();
         if (value == null) return;
         foreach (var slot in value.Slots.OrderBy(s => s.SlotLabel))
             Slots.Add(new PresetSlotViewModel(slot, FolderTypeOptions));
+        _ = LoadExclusionsAsync(value.Id);
+    }
+
+    private async Task LoadExclusionsAsync(int presetId)
+    {
+        var list = await _exclusionService.GetByPresetAsync(presetId);
+        Exclusions.Clear();
+        foreach (var e in list)
+            Exclusions.Add(e);
     }
 
     [RelayCommand]
     private async Task AddPreset()
     {
         var preset = await _presetService.AddAsync("New Preset");
-        // Reload to get slots
         var loaded = await _presetService.GetAllAsync();
         Presets.Clear();
         foreach (var p in loaded)
@@ -83,4 +96,34 @@ public partial class PresetsViewModel : ObservableObject
         if (SelectedPreset == null) return;
         LoadPresetRequested?.Invoke(SelectedPreset);
     }
+
+    // --- Exclusions ---
+
+    [RelayCommand]
+    private async Task AddExclusion()
+    {
+        if (SelectedPreset == null) return;
+        var exclusion = new PresetExclusion
+        {
+            PresetId = SelectedPreset.Id,
+            Pattern = string.Empty,
+            MatchType = ExclusionMatchType.Contains,
+            IsActive = true
+        };
+        await _exclusionService.AddAsync(exclusion);
+        Exclusions.Add(exclusion);
+        SelectedExclusion = exclusion;
+    }
+
+    [RelayCommand]
+    private async Task DeleteExclusion()
+    {
+        if (SelectedExclusion == null) return;
+        await _exclusionService.DeleteAsync(SelectedExclusion.Id);
+        Exclusions.Remove(SelectedExclusion);
+        SelectedExclusion = null;
+    }
+
+    [RelayCommand]
+    private async Task SaveExclusions() => await _exclusionService.UpdateAsync();
 }

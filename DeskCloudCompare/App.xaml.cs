@@ -40,6 +40,7 @@ public partial class App : Application
         services.AddDbContext<AppDbContext>(o => o.UseSqlite($"Data Source={dbPath}"));
 
         services.AddTransient<FolderTypeService>();
+        services.AddTransient<PresetExclusionService>();
         services.AddTransient<PathTranslationService>();
         services.AddTransient<PresetService>();
         services.AddTransient<FolderScanService>();
