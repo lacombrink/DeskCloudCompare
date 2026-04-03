@@ -93,6 +93,7 @@
 
         <!-- Results Grid — bound to FilteredRows for live filtering + sorting -->
         <DataGrid Grid.Row="2"
+                  x:Name="_resultsGrid"
                   ItemsSource="{Binding FilteredRows}"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
@@ -102,7 +103,13 @@
                   GridLinesVisibility="All"
                   SelectionMode="Extended"
                   EnableRowVirtualization="True"
-                  EnableColumnVirtualization="True">
+                  EnableColumnVirtualization="True"
+                  PreviewKeyDown="ResultsGrid_PreviewKeyDown"
+                  PreviewMouseRightButtonDown="ResultsGrid_PreviewMouseRightButtonDown"
+                  ContextMenuOpening="ResultsGrid_ContextMenuOpening">
+            <DataGrid.ContextMenu>
+                <ContextMenu />
+            </DataGrid.ContextMenu>
 
             <DataGrid.Columns>
 
