@@ -7,12 +7,14 @@
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <helpers:BindingProxy x:Key="Proxy" Data="{Binding}" />
 
-        <Style x:Key="ResultCellStyle" TargetType="TextBlock">
-            <Style.Triggers>
-                <Trigger Property="Text" Value="All identical">
-                    <Setter Property="Background" Value="#C8E6C9" />
-                </Trigger>
-            </Style.Triggers>
+        <!-- Shared style for filter TextBoxes inside column headers -->
+        <Style x:Key="FilterBox" TargetType="TextBox">
+            <Setter Property="Margin" Value="0,3,0,0" />
+            <Setter Property="Padding" Value="2,1" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Background" Value="#FFFFF8E1" />
+            <Setter Property="BorderBrush" Value="#BDBDBD" />
         </Style>
     </UserControl.Resources>
 
@@ -26,110 +28,329 @@
 
         <!-- Slot Configuration -->
         <GroupBox Grid.Row="0" Header="Folder Slots" Margin="0,0,0,8">
-            <UniformGrid Columns="4" Margin="4">
-                <ItemsControl ItemsSource="{Binding Slots}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <UniformGrid Columns="4" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <GroupBox Header="{Binding SlotLabel, StringFormat='Slot {0}'}" Margin="4">
-                                <StackPanel>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="70" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0"
-                                                 Text="{Binding FolderPath, UpdateSourceTrigger=PropertyChanged}"
-                                                 IsReadOnly="True" Background="#F8F8F8"
-                                                 Margin="0,0,4,4" />
-                                        <Button Grid.Column="1" Content="Browse..."
-                                                Command="{Binding BrowseCommand}" />
-                                    </Grid>
-                                    <ComboBox ItemsSource="{Binding FolderTypeOptions}"
-                                              SelectedItem="{Binding SelectedFolderType}"
-                                              DisplayMemberPath="Name" />
-                                </StackPanel>
-                            </GroupBox>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </UniformGrid>
+            <ItemsControl ItemsSource="{Binding Slots}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="4" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <GroupBox Header="{Binding SlotLabel, StringFormat='Slot {0}'}" Margin="4">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="70" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding FolderPath, UpdateSourceTrigger=PropertyChanged}"
+                                             IsReadOnly="True" Background="#F8F8F8" Margin="0,0,4,4" />
+                                    <Button Grid.Column="1" Content="Browse..."
+                                            Command="{Binding BrowseCommand}" />
+                                </Grid>
+                                <ComboBox ItemsSource="{Binding FolderTypeOptions}"
+                                          SelectedItem="{Binding SelectedFolderType}"
+                                          DisplayMemberPath="Name" />
+                            </StackPanel>
+                        </GroupBox>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </GroupBox>
 
         <!-- Action Bar -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button Content="Scan Folders" Padding="12,4" Margin="0,0,6,0"
-                    Background="#0078D4" Foreground="White"
-                    Command="{Binding ScanCommand}"
-                    IsEnabled="{Binding IsNotBusy}" />
-            <Button Content="Cancel" Padding="8,4" Margin="0,0,16,0"
-                    Command="{Binding CancelCommand}"
-                    IsEnabled="{Binding IsBusy}" />
-            <Separator Width="1" Margin="0,0,16,0" />
-            <Button Content="Select Files Needing Compare" Padding="8,4" Margin="0,0,6,0"
-                    Command="{Binding SelectAllForBinaryCompareCommand}"
-                    IsEnabled="{Binding IsNotBusy}" />
-            <Button Content="Run Binary Compare" Padding="8,4"
-                    Background="#E65100" Foreground="White"
-                    Command="{Binding BinaryCompareCommand}"
-                    IsEnabled="{Binding IsNotBusy}" />
-            <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
-                       Margin="16,0,0,0" Foreground="#555" />
-        </StackPanel>
+        <Grid Grid.Row="1" Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-        <!-- Results Grid -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <Button Content="Scan Folders" Padding="12,4" Margin="0,0,6,0"
+                        Background="#0078D4" Foreground="White"
+                        Command="{Binding ScanCommand}" IsEnabled="{Binding IsNotBusy}" />
+                <Button Content="Cancel" Padding="8,4" Margin="0,0,16,0"
+                        Command="{Binding CancelCommand}" IsEnabled="{Binding IsBusy}" />
+                <Separator Width="1" Margin="0,0,16,0" />
+                <Button Content="Select Files Needing Compare" Padding="8,4" Margin="0,0,6,0"
+                        Command="{Binding SelectAllForBinaryCompareCommand}" IsEnabled="{Binding IsNotBusy}" />
+                <Button Content="Run Binary Compare" Padding="8,4" Margin="0,0,16,0"
+                        Background="#E65100" Foreground="White"
+                        Command="{Binding BinaryCompareCommand}" IsEnabled="{Binding IsNotBusy}" />
+                <Separator Width="1" Margin="0,0,16,0" />
+                <Button Content="Clear Filters" Padding="8,4"
+                        Command="{Binding ClearFiltersCommand}" IsEnabled="{Binding IsNotBusy}" />
+            </StackPanel>
+
+            <TextBlock Grid.Column="1" Text="{Binding StatusMessage}"
+                       VerticalAlignment="Center" Margin="12,0,0,0" Foreground="#555" />
+
+            <TextBlock Grid.Column="2" Text="{Binding FilterStatus}"
+                       VerticalAlignment="Center" Foreground="#1565C0" FontStyle="Italic" />
+        </Grid>
+
+        <!-- Results Grid — bound to FilteredRows for live filtering + sorting -->
         <DataGrid Grid.Row="2"
-                  ItemsSource="{Binding Rows}"
+                  ItemsSource="{Binding FilteredRows}"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
+                  CanUserSortColumns="True"
                   IsReadOnly="True"
                   AlternatingRowBackground="#F5F5F5"
                   GridLinesVisibility="All"
-                  SelectionMode="Extended">
+                  SelectionMode="Extended"
+                  EnableRowVirtualization="True"
+                  EnableColumnVirtualization="True">
+
             <DataGrid.Columns>
 
-                <DataGridCheckBoxColumn Header="&#x2713;" Width="30"
+                <!-- Select for binary compare -->
+                <DataGridCheckBoxColumn Width="30"
                                         Binding="{Binding IsSelectedForBinaryCompare, UpdateSourceTrigger=PropertyChanged}"
-                                        IsReadOnly="False" />
+                                        IsReadOnly="False" CanUserSort="False">
+                    <DataGridCheckBoxColumn.Header>
+                        <TextBlock Text="&#x2713;" ToolTip="Select for binary compare" />
+                    </DataGridCheckBoxColumn.Header>
+                </DataGridCheckBoxColumn>
 
-                <DataGridTextColumn Header="Canonical Path" Width="250"
-                                    Binding="{Binding CanonicalPath}" />
-                <DataGridTextColumn Header="File Name" Width="180"
-                                    Binding="{Binding FileName}" />
-
-                <DataGridTextColumn Header="Path A" Width="160" Binding="{Binding PathA}" />
-                <DataGridTextColumn Header="Path B" Width="160" Binding="{Binding PathB}" />
-                <DataGridTextColumn Header="Path C" Width="160" Binding="{Binding PathC}" />
-                <DataGridTextColumn Header="Path D" Width="160" Binding="{Binding PathD}" />
-
-                <DataGridTextColumn Header="Size A" Width="80"
-                                    Binding="{Binding SizeA, StringFormat=N0}"
-                                    ElementStyle="{StaticResource {x:Type TextBlock}}" />
-                <DataGridTextColumn Header="Size B" Width="80"
-                                    Binding="{Binding SizeB, StringFormat=N0}" />
-                <DataGridTextColumn Header="Size C" Width="80"
-                                    Binding="{Binding SizeC, StringFormat=N0}" />
-                <DataGridTextColumn Header="Size D" Width="80"
-                                    Binding="{Binding SizeD, StringFormat=N0}" />
-
-                <DataGridTextColumn Header="Date A" Width="135"
-                                    Binding="{Binding DateA, StringFormat='yyyy-MM-dd HH:mm:ss'}" />
-                <DataGridTextColumn Header="Date B" Width="135"
-                                    Binding="{Binding DateB, StringFormat='yyyy-MM-dd HH:mm:ss'}" />
-                <DataGridTextColumn Header="Date C" Width="135"
-                                    Binding="{Binding DateC, StringFormat='yyyy-MM-dd HH:mm:ss'}" />
-                <DataGridTextColumn Header="Date D" Width="135"
-                                    Binding="{Binding DateD, StringFormat='yyyy-MM-dd HH:mm:ss'}" />
-
-                <DataGridTemplateColumn Header="Result" Width="200">
+                <!-- Canonical Path -->
+                <DataGridTemplateColumn Width="250" SortMemberPath="CanonicalPath">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Canonical Path" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterCanonicalPath, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Result}" Margin="4,0"
-                                       VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CanonicalPath}" Margin="4,0" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- File Name -->
+                <DataGridTemplateColumn Width="180" SortMemberPath="FileName">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="File Name" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterFileName, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding FileName}" Margin="4,0" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Path A -->
+                <DataGridTemplateColumn Width="160" SortMemberPath="PathA">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Path A" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterPathA, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding PathA}" Margin="4,0" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Path B -->
+                <DataGridTemplateColumn Width="160" SortMemberPath="PathB">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Path B" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterPathB, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding PathB}" Margin="4,0" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Path C -->
+                <DataGridTemplateColumn Width="160" SortMemberPath="PathC">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Path C" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterPathC, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding PathC}" Margin="4,0" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Path D -->
+                <DataGridTemplateColumn Width="160" SortMemberPath="PathD">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Path D" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterPathD, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding PathD}" Margin="4,0" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Size A -->
+                <DataGridTemplateColumn Width="80" SortMemberPath="SizeA">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Size A" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterSizeA, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding SizeA, StringFormat=N0}" Margin="4,0" VerticalAlignment="Center" TextAlignment="Right" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Size B -->
+                <DataGridTemplateColumn Width="80" SortMemberPath="SizeB">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Size B" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterSizeB, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding SizeB, StringFormat=N0}" Margin="4,0" VerticalAlignment="Center" TextAlignment="Right" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Size C -->
+                <DataGridTemplateColumn Width="80" SortMemberPath="SizeC">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Size C" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterSizeC, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding SizeC, StringFormat=N0}" Margin="4,0" VerticalAlignment="Center" TextAlignment="Right" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Size D -->
+                <DataGridTemplateColumn Width="80" SortMemberPath="SizeD">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Size D" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterSizeD, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding SizeD, StringFormat=N0}" Margin="4,0" VerticalAlignment="Center" TextAlignment="Right" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Date A -->
+                <DataGridTemplateColumn Width="145" SortMemberPath="DateA">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Date A" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterDateA, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DateA, StringFormat='yyyy-MM-dd HH:mm:ss'}" Margin="4,0" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Date B -->
+                <DataGridTemplateColumn Width="145" SortMemberPath="DateB">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Date B" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterDateB, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DateB, StringFormat='yyyy-MM-dd HH:mm:ss'}" Margin="4,0" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Date C -->
+                <DataGridTemplateColumn Width="145" SortMemberPath="DateC">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Date C" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterDateC, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DateC, StringFormat='yyyy-MM-dd HH:mm:ss'}" Margin="4,0" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Date D -->
+                <DataGridTemplateColumn Width="145" SortMemberPath="DateD">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Date D" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterDateD, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DateD, StringFormat='yyyy-MM-dd HH:mm:ss'}" Margin="4,0" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Result -->
+                <DataGridTemplateColumn Width="200" SortMemberPath="Result">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Result" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterResult, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Result}" Margin="4,0" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Style.Triggers>
@@ -148,11 +369,18 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTemplateColumn Header="Binary Result" Width="120">
+                <!-- Binary Result -->
+                <DataGridTemplateColumn Width="120" SortMemberPath="BinaryResult">
+                    <DataGridTemplateColumn.Header>
+                        <StackPanel>
+                            <TextBlock Text="Binary Result" FontWeight="SemiBold" />
+                            <TextBox Style="{StaticResource FilterBox}"
+                                     Text="{Binding DataContext.FilterBinaryResult, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding BinaryResult}" Margin="4,0"
-                                       VerticalAlignment="Center">
+                            <TextBlock Text="{Binding BinaryResult}" Margin="4,0" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Style.Triggers>
