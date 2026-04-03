@@ -121,7 +121,7 @@
                         <StackPanel>
                             <TextBlock Text="Canonical Path" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterCanonicalPath, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterCanonicalPath, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -137,7 +137,7 @@
                         <StackPanel>
                             <TextBlock Text="File Name" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterFileName, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterFileName, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -153,7 +153,7 @@
                         <StackPanel>
                             <TextBlock Text="Path A" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterPathA, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterPathA, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -169,7 +169,7 @@
                         <StackPanel>
                             <TextBlock Text="Path B" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterPathB, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterPathB, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -185,7 +185,7 @@
                         <StackPanel>
                             <TextBlock Text="Path C" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterPathC, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterPathC, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -201,7 +201,7 @@
                         <StackPanel>
                             <TextBlock Text="Path D" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterPathD, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterPathD, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -217,7 +217,7 @@
                         <StackPanel>
                             <TextBlock Text="Size A" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterSizeA, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterSizeA, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -233,7 +233,7 @@
                         <StackPanel>
                             <TextBlock Text="Size B" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterSizeB, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterSizeB, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -249,7 +249,7 @@
                         <StackPanel>
                             <TextBlock Text="Size C" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterSizeC, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterSizeC, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -265,7 +265,7 @@
                         <StackPanel>
                             <TextBlock Text="Size D" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterSizeD, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterSizeD, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -281,7 +281,7 @@
                         <StackPanel>
                             <TextBlock Text="Date A" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterDateA, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterDateA, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -297,7 +297,7 @@
                         <StackPanel>
                             <TextBlock Text="Date B" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterDateB, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterDateB, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -313,7 +313,7 @@
                         <StackPanel>
                             <TextBlock Text="Date C" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterDateC, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterDateC, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -329,7 +329,7 @@
                         <StackPanel>
                             <TextBlock Text="Date D" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterDateD, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterDateD, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -345,7 +345,7 @@
                         <StackPanel>
                             <TextBlock Text="Result" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterResult, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterResult, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>
@@ -375,7 +375,7 @@
                         <StackPanel>
                             <TextBlock Text="Binary Result" FontWeight="SemiBold" />
                             <TextBox Style="{StaticResource FilterBox}"
-                                     Text="{Binding DataContext.FilterBinaryResult, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Data.FilterBinaryResult, Source={StaticResource Proxy}, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </DataGridTemplateColumn.Header>
                     <DataGridTemplateColumn.CellTemplate>

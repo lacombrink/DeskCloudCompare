@@ -85,7 +85,7 @@
                             </DataGridTemplateColumn.CellTemplate>
                             <DataGridTemplateColumn.CellEditingTemplate>
                                 <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding DataContext.FolderTypeOptions, Source={StaticResource Proxy}}"
+                                    <ComboBox ItemsSource="{Binding Data.FolderTypeOptions, Source={StaticResource Proxy}}"
                                               SelectedItem="{Binding FromType, UpdateSourceTrigger=PropertyChanged}"
                                               DisplayMemberPath="Name" />
                                 </DataTemplate>
@@ -100,7 +100,7 @@
                             </DataGridTemplateColumn.CellTemplate>
                             <DataGridTemplateColumn.CellEditingTemplate>
                                 <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding DataContext.FolderTypeOptions, Source={StaticResource Proxy}}"
+                                    <ComboBox ItemsSource="{Binding Data.FolderTypeOptions, Source={StaticResource Proxy}}"
                                               SelectedItem="{Binding ToType, UpdateSourceTrigger=PropertyChanged}"
                                               DisplayMemberPath="Name" />
                                 </DataTemplate>
@@ -162,7 +162,7 @@
                             </DataGridTemplateColumn.CellTemplate>
                             <DataGridTemplateColumn.CellEditingTemplate>
                                 <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding DataContext.RuleTypeOptions, Source={StaticResource Proxy}}"
+                                    <ComboBox ItemsSource="{Binding Data.RuleTypeOptions, Source={StaticResource Proxy}}"
                                               SelectedItem="{Binding RuleType, UpdateSourceTrigger=PropertyChanged}" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellEditingTemplate>
