@@ -131,7 +131,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                                 <DataGridTemplateColumn.CellEditingTemplate>
                                     <DataTemplate>
-                                        <ComboBox ItemsSource="{Binding DataContext.MatchTypeOptions, Source={StaticResource Proxy}}"
+                                        <ComboBox ItemsSource="{Binding Data.MatchTypeOptions, Source={StaticResource Proxy}}"
                                                   SelectedItem="{Binding MatchType, UpdateSourceTrigger=PropertyChanged}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellEditingTemplate>
