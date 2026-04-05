@@ -14,14 +14,14 @@ public class CountryManagerScanService(AppDbContext db)
     [
         " AA", " BW", " CA", " GH", " IE", " KE", " LR", " MU", " NA", " NG",
         " RW", " SA", " ZA", " SZ", " UG", " GG", " JE", " TZ", " ZM",
-        " EW", " NI", " SC", " GB"
+        " EW", " NI", " SC", " GB", " ZZ"
     ];
 
     private static readonly string[] UnderscoreSuffixes =
     [
         "_AA", "_BW", "_CA", "_GH", "_IE", "_KE", "_LR", "_MU", "_NA", "_NG",
         "_RW", "_SA", "_ZA", "_SZ", "_UG", "_GG", "_JE", "_TZ", "_ZM",
-        "_EW", "_NI", "_SC", "_GB"
+        "_EW", "_NI", "_SC", "_GB", "_ZZ"
     ];
 
     // -----------------------------------------------------------------------
@@ -43,6 +43,10 @@ public class CountryManagerScanService(AppDbContext db)
         await db.Database.ExecuteSqlRawAsync("DELETE FROM CountryFrameworkPresences", ct);
         await db.Database.ExecuteSqlRawAsync("DELETE FROM CanonicalFrameworks", ct);
         await db.Database.ExecuteSqlRawAsync("DELETE FROM CountryEntries", ct);
+
+        // Raw SQL bypasses EF's change tracker — clear it so entities tracked from a
+        // previous scan don't conflict when we add new ones with the same keys.
+        db.ChangeTracker.Clear();
 
         // In-memory caches so EF can build the object graph before a single SaveChangesAsync
         var frameworkCache = new Dictionary<string, CanonicalFramework>(StringComparer.OrdinalIgnoreCase);
@@ -107,6 +111,28 @@ public class CountryManagerScanService(AppDbContext db)
         IProgress<string>? progress = null,
         CancellationToken ct = default)
     {
+        // Load framework once — avoids unloaded navigation property access inside the loop
+        var framework = await db.CanonicalFrameworks.FindAsync([canonicalFrameworkId], ct);
+        if (framework == null) return;
+        var categorySubfolder = framework.Category == FrameworkCategory.Framework
+            ? "Frameworks" : "Methodologies";
+
+        // Pre-load all country folder names for this framework (avoids N×M DB queries)
+        var frameworkPresences = await db.CountryFrameworkPresences
+            .Where(p => p.CanonicalFrameworkId == canonicalFrameworkId)
+            .ToListAsync(ct);
+        var folderByCountry = frameworkPresences.ToDictionary(
+            p => p.CountryCode, p => p.ActualFolderName, StringComparer.OrdinalIgnoreCase);
+
+        // Pre-load all country root paths
+        var settings = await db.CountryManagerSettings.FirstOrDefaultAsync(ct);
+        if (settings == null) return;
+        var entries = await db.CountryEntries.ToListAsync(ct);
+        var rootByCountry = entries.ToDictionary(
+            e => e.Code,
+            e => Path.Combine(settings.RootFolderPath, e.RawFolderName),
+            StringComparer.OrdinalIgnoreCase);
+
         var files = await db.CanonicalFiles
             .Where(f => f.CanonicalFrameworkId == canonicalFrameworkId
                      && !f.IsDxdb
@@ -119,16 +145,8 @@ public class CountryManagerScanService(AppDbContext db)
             ct.ThrowIfCancellationRequested();
             foreach (var presence in file.Presences)
             {
-                // Find the actual file path to hash
-                var countryPresence = await db.CountryFrameworkPresences
-                    .FirstOrDefaultAsync(p =>
-                        p.CanonicalFrameworkId == canonicalFrameworkId &&
-                        p.CountryCode == presence.CountryCode, ct);
-
-                if (countryPresence == null) continue;
-
-                var rootPath = await GetCountryFolderAsync(presence.CountryCode, ct);
-                if (rootPath == null) continue;
+                if (!folderByCountry.TryGetValue(presence.CountryCode, out var actualFolder)) continue;
+                if (!rootByCountry.TryGetValue(presence.CountryCode, out var rootPath)) continue;
 
                 var relPath = file.RelativePath;
                 string fullPath;
@@ -136,15 +154,11 @@ public class CountryManagerScanService(AppDbContext db)
                 if (relPath.StartsWith("#Updates\\", StringComparison.OrdinalIgnoreCase))
                 {
                     var fileName = relPath["#Updates\\".Length..];
-                    fullPath = Path.Combine(rootPath, "NewUserDataUpdates",
-                        countryPresence.ActualFolderName, fileName);
+                    fullPath = Path.Combine(rootPath, "NewUserDataUpdates", actualFolder, fileName);
                 }
                 else
                 {
-                    fullPath = Path.Combine(rootPath, "NewUserData",
-                        countryPresence.CanonicalFramework.Category == FrameworkCategory.Framework
-                            ? "Frameworks" : "Methodologies",
-                        countryPresence.ActualFolderName, relPath);
+                    fullPath = Path.Combine(rootPath, "NewUserData", categorySubfolder, actualFolder, relPath);
                 }
 
                 if (!File.Exists(fullPath)) continue;
@@ -282,8 +296,9 @@ public class CountryManagerScanService(AppDbContext db)
                 var file = GetOrCreate(fileCache, cacheKey, () =>
                 {
                     var isDxdb = name.EndsWith(".dxdb", StringComparison.OrdinalIgnoreCase);
-                    var isFinancial = relPath.Contains("Financial Data",
-                        StringComparison.OrdinalIgnoreCase);
+                    var isFinancial = relPath.Contains("Financial Data", StringComparison.OrdinalIgnoreCase)
+                        || name.Equals("Detail.xlsx", StringComparison.OrdinalIgnoreCase)
+                        || name.Equals("Switch.xlsx", StringComparison.OrdinalIgnoreCase);
                     var f = new CanonicalFile
                     {
                         CanonicalFramework = framework,

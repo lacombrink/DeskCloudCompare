@@ -8,6 +8,16 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <!-- Bundle the pre-populated database with the app.
+       PreserveNewest copies on first build but won't overwrite a newer file
+       (so user data accumulated after deployment is not clobbered on rebuild).
+       To update the shipped database: close the app, rebuild the project. -->
+  <ItemGroup>
+    <Content Include="Database\deskcloudcompare.db" Condition="Exists('Database\deskcloudcompare.db')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />

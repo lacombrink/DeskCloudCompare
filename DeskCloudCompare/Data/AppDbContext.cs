@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<CanonicalFile> CanonicalFiles => Set<CanonicalFile>();
     public DbSet<CountryFilePresence> CountryFilePresences => Set<CountryFilePresence>();
     public DbSet<CountryManagerSettings> CountryManagerSettings => Set<CountryManagerSettings>();
+    public DbSet<CountryFileException> CountryFileExceptions => Set<CountryFileException>();
     public DbSet<SpecialFileRule> SpecialFileRules => Set<SpecialFileRule>();
     public DbSet<DxdbCsvMapping> DxdbCsvMappings => Set<DxdbCsvMapping>();
     public DbSet<FieldMapping> FieldMappings => Set<FieldMapping>();
@@ -130,6 +131,14 @@ public class AppDbContext : DbContext
         });
 
         modelBuilder.Entity<CountryManagerSettings>(e => e.HasKey(x => x.Id));
+
+        modelBuilder.Entity<CountryFileException>(e =>
+        {
+            e.HasKey(x => x.Id);
+            // Unique on the stable natural key — survives rescan (no FK to volatile CanonicalFile IDs)
+            e.HasIndex(x => new { x.FrameworkName, x.FrameworkCategory, x.RelativePath, x.CountryCode })
+             .IsUnique();
+        });
 
         // Seed a default "Canonical" folder type as the normalization pivot
         modelBuilder.Entity<FolderType>().HasData(

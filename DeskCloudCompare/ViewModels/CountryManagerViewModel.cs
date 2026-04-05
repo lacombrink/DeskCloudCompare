@@ -24,11 +24,18 @@ public partial class CountryManagerViewModel : ObservableObject
     [ObservableProperty] private DataTable? _fileDetailTable;
     [ObservableProperty] private string _selectedFrameworkName = string.Empty;
     [ObservableProperty] private int _selectedFrameworkId;
+    [ObservableProperty] private bool _hasBinaryCompareData;
+    [ObservableProperty] private bool _showIssuesOnly;
 
     public bool IsNotBusy => !IsBusy;
 
     private List<string> _countryCodes = new();
     private CancellationTokenSource? _cts;
+
+    // In-memory exception set: (frameworkName, frameworkCategory, relativeFilePath, countryCode)
+    // Keyed by stable names so exceptions survive a full rescan.
+    private HashSet<(string, FrameworkCategory, string, string)> _exceptions = new(
+        ExceptionComparer.Instance);
 
     public CountryManagerViewModel(AppDbContext db, CountryManagerScanService scanService)
     {
@@ -36,7 +43,23 @@ public partial class CountryManagerViewModel : ObservableObject
         _scanService = scanService;
     }
 
-    partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(IsNotBusy));
+    partial void OnIsBusyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsNotBusy));
+        BinaryCompareCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnSelectedFrameworkIdChanged(int value) =>
+        BinaryCompareCommand.NotifyCanExecuteChanged();
+
+    partial void OnMasterCountryCodeChanged(string value) =>
+        BinaryCompareCommand.NotifyCanExecuteChanged();
+
+    partial void OnShowIssuesOnlyChanged(bool value)
+    {
+        if (SelectedFrameworkId > 0)
+            _ = BuildFileDetailTableAsync(SelectedFrameworkId);
+    }
 
     public async Task LoadAsync()
     {
@@ -47,11 +70,21 @@ public partial class CountryManagerViewModel : ObservableObject
             MasterCountryCode = settings.MasterCountryCode ?? string.Empty;
         }
 
+        await LoadExceptionsAsync();
+
         var hasData = await _db.CountryEntries.AnyAsync();
         if (hasData)
             await BuildFrameworkMatrixAsync();
         else
             StatusMessage = "No scan data. Configure root folder and click Scan.";
+    }
+
+    private async Task LoadExceptionsAsync()
+    {
+        var all = await _db.CountryFileExceptions.ToListAsync();
+        _exceptions = all
+            .Select(e => (e.FrameworkName, e.FrameworkCategory, e.RelativePath, e.CountryCode))
+            .ToHashSet(ExceptionComparer.Instance);
     }
 
     // -----------------------------------------------------------------------
@@ -80,6 +113,8 @@ public partial class CountryManagerViewModel : ObservableObject
         FileDetailTable = null;
         SelectedFrameworkId = 0;
         SelectedFrameworkName = string.Empty;
+        HasBinaryCompareData = false;
+        ShowIssuesOnly = false;
         _cts = new CancellationTokenSource();
 
         try
@@ -88,6 +123,7 @@ public partial class CountryManagerViewModel : ObservableObject
             await _scanService.ScanAsync(RootFolderPath,
                 string.IsNullOrWhiteSpace(MasterCountryCode) ? null : MasterCountryCode,
                 progress, _cts.Token);
+            await LoadExceptionsAsync();
             await BuildFrameworkMatrixAsync();
         }
         catch (OperationCanceledException)
@@ -146,6 +182,7 @@ public partial class CountryManagerViewModel : ObservableObject
             var progress = new Progress<string>(msg => StatusMessage = msg);
             await _scanService.BinaryCompareAsync(SelectedFrameworkId, MasterCountryCode,
                 progress, _cts.Token);
+            HasBinaryCompareData = true;
             await BuildFileDetailTableAsync(SelectedFrameworkId);
         }
         catch (OperationCanceledException)
@@ -167,12 +204,138 @@ public partial class CountryManagerViewModel : ObservableObject
         IsNotBusy && SelectedFrameworkId > 0 && !string.IsNullOrWhiteSpace(MasterCountryCode);
 
     // -----------------------------------------------------------------------
+    // Exception marking (called from view code-behind)
+    // -----------------------------------------------------------------------
+
+    // Resolve the framework name/category for the file currently being marked.
+    private async Task<(string name, FrameworkCategory category)?> GetFrameworkForFileAsync(int fileId)
+    {
+        var file = await _db.CanonicalFiles
+            .Include(f => f.CanonicalFramework)
+            .FirstOrDefaultAsync(f => f.Id == fileId);
+        if (file == null) return null;
+        return (file.CanonicalFramework.Name, file.CanonicalFramework.Category);
+    }
+
+    private async Task AddExceptionAsync(
+        string frameworkName, FrameworkCategory category, string relPath, string countryCode)
+    {
+        var key = (frameworkName, category, relPath, countryCode);
+        if (_exceptions.Contains(key)) return;
+
+        _db.CountryFileExceptions.Add(new CountryFileException
+        {
+            FrameworkName = frameworkName,
+            FrameworkCategory = category,
+            RelativePath = relPath,
+            CountryCode = countryCode
+        });
+        _exceptions.Add(key);
+    }
+
+    /// <summary>Mark one specific (file, country) pair as an exception.</summary>
+    public async Task MarkExceptionAsync(int fileId, string countryCode)
+    {
+        var file = await _db.CanonicalFiles
+            .Include(f => f.CanonicalFramework)
+            .FirstOrDefaultAsync(f => f.Id == fileId);
+        if (file == null) return;
+
+        await AddExceptionAsync(
+            file.CanonicalFramework.Name, file.CanonicalFramework.Category,
+            file.RelativePath, countryCode);
+
+        await _db.SaveChangesAsync();
+        await BuildFileDetailTableAsync(SelectedFrameworkId);
+    }
+
+    /// <summary>Mark all X cells in the file's row as exceptions.</summary>
+    public async Task MarkRowExceptionsAsync(int fileId, IEnumerable<string> missingCountryCodes)
+    {
+        var file = await _db.CanonicalFiles
+            .Include(f => f.CanonicalFramework)
+            .FirstOrDefaultAsync(f => f.Id == fileId);
+        if (file == null) return;
+
+        foreach (var cc in missingCountryCodes)
+            await AddExceptionAsync(
+                file.CanonicalFramework.Name, file.CanonicalFramework.Category,
+                file.RelativePath, cc);
+
+        await _db.SaveChangesAsync();
+        await BuildFileDetailTableAsync(SelectedFrameworkId);
+    }
+
+    /// <summary>
+    /// Across ALL frameworks, wherever a file with the same name is absent for the
+    /// given countries (and the framework IS applicable there), mark as exception.
+    /// </summary>
+    public async Task MarkAllFrameworksExceptionsAsync(string fileName, IEnumerable<string> missingCountryCodes)
+    {
+        var codes = missingCountryCodes.ToList();
+
+        var matchingFiles = await _db.CanonicalFiles
+            .Where(f => f.FileName == fileName)
+            .Include(f => f.CanonicalFramework)
+            .ToListAsync();
+
+        var fileIds = matchingFiles.Select(f => f.Id).ToList();
+        var filePres = await _db.CountryFilePresences
+            .Where(p => fileIds.Contains(p.CanonicalFileId))
+            .ToListAsync();
+
+        var fwIds = matchingFiles.Select(f => f.CanonicalFrameworkId).Distinct().ToList();
+        var fwPres = await _db.CountryFrameworkPresences
+            .Where(p => fwIds.Contains(p.CanonicalFrameworkId))
+            .ToListAsync();
+
+        foreach (var file in matchingFiles)
+        {
+            var presentCodes = filePres
+                .Where(p => p.CanonicalFileId == file.Id)
+                .Select(p => p.CountryCode)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var fwCountries = fwPres
+                .Where(p => p.CanonicalFrameworkId == file.CanonicalFrameworkId)
+                .Select(p => p.CountryCode)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var cc in codes)
+            {
+                if (!fwCountries.Contains(cc)) continue;   // framework not applicable — skip
+                if (presentCodes.Contains(cc)) continue;   // file exists there — skip
+                await AddExceptionAsync(
+                    file.CanonicalFramework.Name, file.CanonicalFramework.Category,
+                    file.RelativePath, cc);
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        await BuildFileDetailTableAsync(SelectedFrameworkId);
+    }
+
+    private bool IsException(string frameworkName, FrameworkCategory category, string relPath, string countryCode) =>
+        _exceptions.Contains((frameworkName, category, relPath, countryCode));
+
+    /// <summary>
+    /// Countries that actually have the currently-selected framework.
+    /// Used by the view to decide whether to show the right-click exception menu.
+    /// </summary>
+    public HashSet<string> FrameworkPresentCountries { get; private set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    // -----------------------------------------------------------------------
     // DataTable builders
     // -----------------------------------------------------------------------
 
     private async Task BuildFrameworkMatrixAsync()
     {
-        var countries = await _db.CountryEntries.OrderBy(c => c.SortOrder).ToListAsync();
+        var allCountries = await _db.CountryEntries.OrderBy(c => c.SortOrder).ToListAsync();
+        // Exclude the master country — it's only used as the binary compare reference
+        var countries = allCountries
+            .Where(c => !c.Code.Equals(MasterCountryCode, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         _countryCodes = countries.Select(c => c.Code).ToList();
 
         var frameworks = await _db.CanonicalFrameworks
@@ -183,7 +346,7 @@ public partial class CountryManagerViewModel : ObservableObject
         var presences = await _db.CountryFrameworkPresences.ToListAsync();
 
         var dt = new DataTable();
-        dt.Columns.Add("_Id", typeof(int));   // hidden, used to drive SelectFramework
+        dt.Columns.Add("_Id", typeof(int));
         dt.Columns.Add("Category", typeof(string));
         dt.Columns.Add("Framework / Methodology", typeof(string));
 
@@ -207,22 +370,38 @@ public partial class CountryManagerViewModel : ObservableObject
 
     private async Task BuildFileDetailTableAsync(int frameworkId)
     {
-        var countries = await _db.CountryEntries.OrderBy(c => c.SortOrder).ToListAsync();
+        var allCountries = await _db.CountryEntries.OrderBy(c => c.SortOrder).ToListAsync();
+        var countries = allCountries
+            .Where(c => !c.Code.Equals(MasterCountryCode, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        // Load framework to get its stable name/category for exception lookups
+        var framework = await _db.CanonicalFrameworks.FindAsync(frameworkId);
+        if (framework == null) return;
+        var fwName = framework.Name;
+        var fwCategory = framework.Category;
+
+        // Which countries actually have this framework (determines whether a missing file is an issue)
+        var frameworkPresences = await _db.CountryFrameworkPresences
+            .Where(p => p.CanonicalFrameworkId == frameworkId)
+            .ToListAsync();
+        FrameworkPresentCountries = frameworkPresences
+            .Select(p => p.CountryCode)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var files = await _db.CanonicalFiles
             .Where(f => f.CanonicalFrameworkId == frameworkId)
             .OrderBy(f => f.RelativePath)
             .ToListAsync();
 
-        var presences = await _db.CountryFilePresences
+        var filePresences = await _db.CountryFilePresences
             .Where(p => p.CanonicalFile.CanonicalFrameworkId == frameworkId)
             .ToListAsync();
 
-        // Determine master hashes (from master country if binary compare was run)
         var masterHashes = new Dictionary<int, string?>();
         if (!string.IsNullOrWhiteSpace(MasterCountryCode))
         {
-            foreach (var p in presences.Where(p => p.CountryCode == MasterCountryCode))
+            foreach (var p in filePresences.Where(p => p.CountryCode == MasterCountryCode))
                 masterHashes[p.CanonicalFileId] = p.BinaryHash;
         }
 
@@ -237,19 +416,50 @@ public partial class CountryManagerViewModel : ObservableObject
 
         foreach (var file in files)
         {
+            var cellValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var hasIssue = false;
+
+            foreach (var c in countries)
+            {
+                var frameworkApplicable = FrameworkPresentCountries.Contains(c.Code);
+                var presence = filePresences.FirstOrDefault(
+                    p => p.CanonicalFileId == file.Id && p.CountryCode == c.Code);
+
+                string cell;
+                if (!frameworkApplicable)
+                {
+                    // Framework not applicable to this country — leave blank, never an issue
+                    cell = "";
+                }
+                else if (presence != null)
+                {
+                    cell = BuildPresentCellStatus(file, presence, masterHashes);
+                    if (cell.StartsWith("≠")) hasIssue = true;
+                }
+                else if (IsException(fwName, fwCategory, file.RelativePath, c.Code))
+                {
+                    // Framework applicable, file intentionally absent — mark with E
+                    cell = "E";
+                }
+                else
+                {
+                    // Framework applicable, file missing, no exception → real issue
+                    cell = "X";
+                    hasIssue = true;
+                }
+
+                cellValues[c.Code] = cell;
+            }
+
+            if (ShowIssuesOnly && !hasIssue) continue;
+
             var row = dt.NewRow();
             row["_FileId"] = file.Id;
             row["File"] = file.RelativePath;
             row["_IsDxdb"] = file.IsDxdb;
             row["_IsFinancialData"] = file.IsFinancialData;
-
             foreach (var c in countries)
-            {
-                var presence = presences.FirstOrDefault(
-                    p => p.CanonicalFileId == file.Id && p.CountryCode == c.Code);
-
-                row[c.Code] = BuildCellStatus(file, presence, masterHashes);
-            }
+                row[c.Code] = cellValues[c.Code];
 
             dt.Rows.Add(row);
         }
@@ -258,24 +468,45 @@ public partial class CountryManagerViewModel : ObservableObject
         StatusMessage = $"{SelectedFrameworkName} — {files.Count} files × {countries.Count} countries.";
     }
 
-    private string BuildCellStatus(
+    private string BuildPresentCellStatus(
         CanonicalFile file,
-        CountryFilePresence? presence,
+        CountryFilePresence presence,
         Dictionary<int, string?> masterHashes)
     {
-        if (presence == null) return "✗";
-
         if (file.IsDxdb) return "dxdb";
         if (file.IsFinancialData) return "fin";
 
-        // Binary compare results
         if (presence.BinaryHash != null)
         {
             if (masterHashes.TryGetValue(file.Id, out var masterHash) && masterHash != null)
-                return presence.BinaryHash == masterHash ? "=" : $"≠ {presence.CountryCode}";
-            return "✓";   // present but master has no hash
+                return presence.BinaryHash == masterHash ? "=" : "≠";
+            return "✓";
         }
 
         return "✓";
     }
+}
+
+/// <summary>
+/// Case-insensitive equality for (frameworkName, category, relPath, countryCode) tuples.
+/// </summary>
+file sealed class ExceptionComparer
+    : IEqualityComparer<(string name, FrameworkCategory cat, string path, string country)>
+{
+    public static readonly ExceptionComparer Instance = new();
+
+    public bool Equals(
+        (string name, FrameworkCategory cat, string path, string country) x,
+        (string name, FrameworkCategory cat, string path, string country) y) =>
+        x.cat == y.cat
+        && string.Equals(x.name, y.name, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(x.path, y.path, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(x.country, y.country, StringComparison.OrdinalIgnoreCase);
+
+    public int GetHashCode((string name, FrameworkCategory cat, string path, string country) obj) =>
+        HashCode.Combine(
+            obj.cat,
+            obj.name.ToUpperInvariant(),
+            obj.path.ToUpperInvariant(),
+            obj.country.ToUpperInvariant());
 }

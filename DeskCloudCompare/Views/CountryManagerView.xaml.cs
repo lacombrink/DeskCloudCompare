@@ -2,6 +2,8 @@ using DeskCloudCompare.ViewModels;
 using System.Data;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace DeskCloudCompare.Views;
@@ -48,19 +50,23 @@ public partial class CountryManagerView : UserControl
         // Country columns (bool) → compact checkbox, centered
         if (e.PropertyType == typeof(bool))
         {
-            var col = new DataGridCheckBoxColumn
+            e.Column = new DataGridCheckBoxColumn
             {
                 Header = name,
                 Binding = new System.Windows.Data.Binding($"[{name}]"),
                 Width = 42,
                 IsReadOnly = true
             };
-            e.Column = col;
             return;
         }
 
-        // Text columns
-        e.Column.Width = name == "Category" ? 100 : 220;
+        // Text columns — explicit binding avoids issues with special characters (e.g. "/" in column name)
+        e.Column = new DataGridTextColumn
+        {
+            Header = name,
+            Binding = new System.Windows.Data.Binding($"[{name}]"),
+            Width = name == "Category" ? 100 : 220
+        };
     }
 
     private void MatrixGrid_LoadingRow(object? sender, DataGridRowEventArgs e)
@@ -103,10 +109,56 @@ public partial class CountryManagerView : UserControl
             return;
         }
 
-        // Country columns — narrow, centered text
+        // Country columns — narrow, with "E" (exception) cell highlight
         if (e.PropertyType == typeof(string) && name.Length <= 3)
         {
             e.Column.Width = 46;
+
+            var cellStyle = new Style(typeof(DataGridCell));
+
+            // X = framework applicable, file missing → red
+            cellStyle.Triggers.Add(new DataTrigger
+            {
+                Binding = new System.Windows.Data.Binding($"[{name}]"),
+                Value = "X",
+                Setters =
+                {
+                    new Setter(DataGridCell.BackgroundProperty,
+                        new SolidColorBrush(Color.FromRgb(0xFF, 0xCC, 0xCC))), // light red
+                    new Setter(DataGridCell.ForegroundProperty,
+                        new SolidColorBrush(Color.FromRgb(0xC6, 0x28, 0x28)))  // dark red text
+                }
+            });
+
+            // ≠ = binary mismatch → red (same as missing)
+            cellStyle.Triggers.Add(new DataTrigger
+            {
+                Binding = new System.Windows.Data.Binding($"[{name}]"),
+                Value = "≠",
+                Setters =
+                {
+                    new Setter(DataGridCell.BackgroundProperty,
+                        new SolidColorBrush(Color.FromRgb(0xFF, 0xCC, 0xCC))), // light red
+                    new Setter(DataGridCell.ForegroundProperty,
+                        new SolidColorBrush(Color.FromRgb(0xC6, 0x28, 0x28)))  // dark red text
+                }
+            });
+
+            // E = exception marked → amber
+            cellStyle.Triggers.Add(new DataTrigger
+            {
+                Binding = new System.Windows.Data.Binding($"[{name}]"),
+                Value = "E",
+                Setters =
+                {
+                    new Setter(DataGridCell.BackgroundProperty,
+                        new SolidColorBrush(Color.FromRgb(0xFF, 0xE0, 0x82))), // amber
+                    new Setter(DataGridCell.ForegroundProperty,
+                        new SolidColorBrush(Color.FromRgb(0x7B, 0x4A, 0x00)))  // dark brown text
+                }
+            });
+
+            e.Column.CellStyle = cellStyle;
         }
     }
 
@@ -127,5 +179,92 @@ public partial class CountryManagerView : UserControl
                          : isFinData ? _finBrush
                          : isUpdate  ? _updateBrush
                          : null;
+    }
+
+    // -----------------------------------------------------------------------
+    // Right-click context menu — exception marking
+    // -----------------------------------------------------------------------
+
+    private async void FileGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (Vm == null) return;
+
+        // Walk up the visual tree to find the clicked DataGridCell
+        var cell = FindVisualParent<DataGridCell>((DependencyObject)e.OriginalSource);
+        if (cell == null) return;
+
+        var countryCode = cell.Column?.Header?.ToString() ?? string.Empty;
+
+        // Only show menu on country columns (short header, not a text/hidden column)
+        if (countryCode.Length == 0 || countryCode.Length > 3 || countryCode.StartsWith("_"))
+            return;
+
+        if (cell.DataContext is not DataRowView drv) return;
+
+        var cellValue = drv[countryCode]?.ToString() ?? string.Empty;
+
+        // Only show menu on X cells (framework applicable, file missing, no exception)
+        if (cellValue != "X") return;
+
+        var fileId = (int)drv["_FileId"];
+        var fileName = System.IO.Path.GetFileName(drv["File"]?.ToString() ?? string.Empty);
+
+        // Collect all X cells in this row (framework applicable + missing + no exception)
+        var allMissingCodes = _fileGrid.Columns
+            .Select(col => col.Header?.ToString() ?? string.Empty)
+            .Where(h => h.Length > 0 && h.Length <= 3 && !h.StartsWith("_"))
+            .Where(h => drv[h]?.ToString() == "X")
+            .ToList();
+
+        var menu = new ContextMenu();
+
+        var item1 = new MenuItem { Header = $"Mark exception for {countryCode} only" };
+        item1.Click += async (_, _) => await Vm.MarkExceptionAsync(fileId, countryCode);
+        menu.Items.Add(item1);
+
+        if (allMissingCodes.Count > 1)
+        {
+            var item2 = new MenuItem
+            {
+                Header = $"Mark all missing countries as exception ({allMissingCodes.Count} countries)"
+            };
+            item2.Click += async (_, _) => await Vm.MarkRowExceptionsAsync(fileId, allMissingCodes);
+            menu.Items.Add(item2);
+        }
+
+        var item3 = new MenuItem
+        {
+            Header = $"Mark all frameworks — '{fileName}' missing in {countryCode}"
+        };
+        item3.Click += async (_, _) =>
+            await Vm.MarkAllFrameworksExceptionsAsync(fileName, new[] { countryCode });
+        menu.Items.Add(item3);
+
+        if (allMissingCodes.Count > 1)
+        {
+            var item4 = new MenuItem
+            {
+                Header = $"Mark all frameworks — '{fileName}' missing in all {allMissingCodes.Count} countries"
+            };
+            item4.Click += async (_, _) =>
+                await Vm.MarkAllFrameworksExceptionsAsync(fileName, allMissingCodes);
+            menu.Items.Add(item4);
+        }
+
+        menu.PlacementTarget = cell;
+        menu.Placement = PlacementMode.MousePoint;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject child) where T : DependencyObject
+    {
+        var current = child;
+        while (current != null)
+        {
+            if (current is T match) return match;
+            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+        }
+        return null;
     }
 }

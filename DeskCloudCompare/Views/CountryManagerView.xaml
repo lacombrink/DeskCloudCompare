@@ -25,7 +25,6 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -38,27 +37,21 @@
             <TextBlock Grid.Column="3" Text="Master:" VerticalAlignment="Center" Margin="0,0,6,0" />
             <TextBox Grid.Column="4" Text="{Binding MasterCountryCode, UpdateSourceTrigger=PropertyChanged}"
                      Width="50" VerticalAlignment="Center" Margin="0,0,12,0"
-                     ToolTip="Country code used as reference for binary compare (e.g. ZA)" />
+                     ToolTip="Country code used as reference for binary compare (e.g. ZZ)" />
 
             <Button Grid.Column="5" Content="Scan" Padding="12,3" Margin="0,0,4,0"
                     Background="#0078D4" Foreground="White"
                     Command="{Binding ScanCommand}" IsEnabled="{Binding IsNotBusy}" />
-            <Button Grid.Column="6" Content="Cancel" Padding="8,3" Margin="0,0,12,0"
+            <Button Grid.Column="6" Content="Cancel" Padding="8,3" Margin="0,0,0,0"
                     Command="{Binding CancelScanCommand}" IsEnabled="{Binding IsBusy}" />
 
-            <Button Grid.Column="7" Content="Binary Compare (selected framework)" Padding="8,3"
-                    Background="#E65100" Foreground="White"
-                    Command="{Binding BinaryCompareCommand}" IsEnabled="{Binding IsNotBusy}" />
-
-            <TextBlock Grid.Column="8" Text="{Binding StatusMessage}"
+            <TextBlock Grid.Column="7" Text="{Binding StatusMessage}"
                        VerticalAlignment="Center" Margin="12,0,0,0"
                        Foreground="#555" FontStyle="Italic" />
         </Grid>
 
         <!-- Framework × Country matrix -->
-        <GroupBox Grid.Row="1" Header="{Binding SelectedFrameworkName,
-                  StringFormat='Framework Matrix  (click a row to drill down)  {0}',
-                  FallbackValue='Framework Matrix  (click a row to drill down)'}">
+        <GroupBox Grid.Row="1" Header="Framework Matrix  (double-click a row to see file detail)">
             <DataGrid x:Name="_matrixGrid"
                       AutoGenerateColumns="True"
                       CanUserAddRows="False"
@@ -76,9 +69,27 @@
         <GridSplitter Grid.Row="2" HorizontalAlignment="Stretch" Height="5" />
 
         <!-- File detail for selected framework -->
-        <GroupBox Grid.Row="3" Header="{Binding SelectedFrameworkName,
-                  StringFormat='File Detail — {0}',
-                  FallbackValue='File Detail  (double-click a framework row above)'}">
+        <GroupBox Grid.Row="3">
+            <GroupBox.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding SelectedFrameworkName,
+                               StringFormat='File Detail — {0}',
+                               FallbackValue='File Detail  (double-click a framework row above)'}"
+                               VerticalAlignment="Center" />
+                    <Button Content="▶ Binary Compare" Padding="10,2" Margin="16,0,0,0"
+                            Background="#E65100" Foreground="White" FontWeight="SemiBold"
+                            Command="{Binding BinaryCompareCommand}"
+                            ToolTip="Hash all non-dxdb files in the selected framework across every country and compare to master" />
+                    <Button Content="Cancel" Padding="6,2" Margin="4,0,0,0"
+                            Command="{Binding CancelScanCommand}" IsEnabled="{Binding IsBusy}" />
+                    <ToggleButton x:Name="_showIssuesBtn"
+                                  Content="⚠ Show Issues Only" Padding="10,2" Margin="12,0,0,0"
+                                  Background="#F57F17" Foreground="White" FontWeight="SemiBold"
+                                  IsChecked="{Binding ShowIssuesOnly}"
+                                  Visibility="{Binding HasBinaryCompareData, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                  ToolTip="Show only rows where files are missing (not marked as exception) or binary hashes differ" />
+                </StackPanel>
+            </GroupBox.Header>
             <DataGrid x:Name="_fileGrid"
                       AutoGenerateColumns="True"
                       CanUserAddRows="False"
@@ -88,7 +99,8 @@
                       GridLinesVisibility="All"
                       EnableRowVirtualization="True"
                       AutoGeneratingColumn="FileGrid_AutoGeneratingColumn"
-                      LoadingRow="FileGrid_LoadingRow" />
+                      LoadingRow="FileGrid_LoadingRow"
+                      PreviewMouseRightButtonDown="FileGrid_PreviewMouseRightButtonDown" />
         </GroupBox>
 
         <!-- Progress bar -->
