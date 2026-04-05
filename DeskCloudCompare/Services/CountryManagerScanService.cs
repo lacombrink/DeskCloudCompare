@@ -245,13 +245,15 @@ public class CountryManagerScanService(AppDbContext db)
                 var file = GetOrCreate(fileCache, $"{framework.GetHashCode()}:{relPath}", () =>
                 {
                     var isDxdb = fileName.EndsWith(".dxdb", StringComparison.OrdinalIgnoreCase);
+                    var isFinancial = fileName.Equals("Detail.xlsx", StringComparison.OrdinalIgnoreCase)
+                        || fileName.Equals("Switch.xlsx", StringComparison.OrdinalIgnoreCase);
                     var f = new CanonicalFile
                     {
                         CanonicalFramework = framework,
                         RelativePath = relPath,
                         FileName = fileName,
                         IsDxdb = isDxdb,
-                        IsFinancialData = false
+                        IsFinancialData = isFinancial
                     };
                     db.CanonicalFiles.Add(f);
                     return f;
