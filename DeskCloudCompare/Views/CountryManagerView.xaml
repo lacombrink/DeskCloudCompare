@@ -1,0 +1,99 @@
+<UserControl x:Class="DeskCloudCompare.Views.CountryManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="5" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Config bar -->
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0" Text="Root Folder:" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <TextBox Grid.Column="1" Text="{Binding RootFolderPath, UpdateSourceTrigger=PropertyChanged}"
+                     IsReadOnly="True" Background="#F8F8F8" VerticalAlignment="Center" Margin="0,0,4,0" />
+            <Button Grid.Column="2" Content="Browse…" Padding="8,3" Margin="0,0,12,0"
+                    Command="{Binding BrowseRootFolderCommand}" IsEnabled="{Binding IsNotBusy}" />
+
+            <TextBlock Grid.Column="3" Text="Master:" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <TextBox Grid.Column="4" Text="{Binding MasterCountryCode, UpdateSourceTrigger=PropertyChanged}"
+                     Width="50" VerticalAlignment="Center" Margin="0,0,12,0"
+                     ToolTip="Country code used as reference for binary compare (e.g. ZA)" />
+
+            <Button Grid.Column="5" Content="Scan" Padding="12,3" Margin="0,0,4,0"
+                    Background="#0078D4" Foreground="White"
+                    Command="{Binding ScanCommand}" IsEnabled="{Binding IsNotBusy}" />
+            <Button Grid.Column="6" Content="Cancel" Padding="8,3" Margin="0,0,12,0"
+                    Command="{Binding CancelScanCommand}" IsEnabled="{Binding IsBusy}" />
+
+            <Button Grid.Column="7" Content="Binary Compare (selected framework)" Padding="8,3"
+                    Background="#E65100" Foreground="White"
+                    Command="{Binding BinaryCompareCommand}" IsEnabled="{Binding IsNotBusy}" />
+
+            <TextBlock Grid.Column="8" Text="{Binding StatusMessage}"
+                       VerticalAlignment="Center" Margin="12,0,0,0"
+                       Foreground="#555" FontStyle="Italic" />
+        </Grid>
+
+        <!-- Framework × Country matrix -->
+        <GroupBox Grid.Row="1" Header="{Binding SelectedFrameworkName,
+                  StringFormat='Framework Matrix  (click a row to drill down)  {0}',
+                  FallbackValue='Framework Matrix  (click a row to drill down)'}">
+            <DataGrid x:Name="_matrixGrid"
+                      AutoGenerateColumns="True"
+                      CanUserAddRows="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="True"
+                      AlternatingRowBackground="#F5F5F5"
+                      GridLinesVisibility="All"
+                      SelectionMode="Single"
+                      EnableRowVirtualization="True"
+                      AutoGeneratingColumn="MatrixGrid_AutoGeneratingColumn"
+                      LoadingRow="MatrixGrid_LoadingRow"
+                      MouseDoubleClick="MatrixGrid_MouseDoubleClick" />
+        </GroupBox>
+
+        <GridSplitter Grid.Row="2" HorizontalAlignment="Stretch" Height="5" />
+
+        <!-- File detail for selected framework -->
+        <GroupBox Grid.Row="3" Header="{Binding SelectedFrameworkName,
+                  StringFormat='File Detail — {0}',
+                  FallbackValue='File Detail  (double-click a framework row above)'}">
+            <DataGrid x:Name="_fileGrid"
+                      AutoGenerateColumns="True"
+                      CanUserAddRows="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="True"
+                      AlternatingRowBackground="#F5F5F5"
+                      GridLinesVisibility="All"
+                      EnableRowVirtualization="True"
+                      AutoGeneratingColumn="FileGrid_AutoGeneratingColumn"
+                      LoadingRow="FileGrid_LoadingRow" />
+        </GroupBox>
+
+        <!-- Progress bar -->
+        <ProgressBar Grid.Row="4" Height="4" Margin="0,4,0,0"
+                     IsIndeterminate="{Binding IsBusy}"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+    </Grid>
+</UserControl>

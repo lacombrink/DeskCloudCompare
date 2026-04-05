@@ -30,6 +30,10 @@
                 <views:SettingsView DataContext="{Binding Settings}" />
             </TabItem>
 
+            <TabItem Header="Country Manager">
+                <views:CountryManagerView DataContext="{Binding CountryManager}" />
+            </TabItem>
+
             <TabItem Header="Data Compare">
                 <views:DataCompareView />
             </TabItem>

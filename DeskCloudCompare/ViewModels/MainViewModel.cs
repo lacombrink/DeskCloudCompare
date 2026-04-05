@@ -9,6 +9,7 @@ public partial class MainViewModel : ObservableObject
     public SettingsViewModel Settings { get; }
     public PresetsViewModel Presets { get; }
     public ComparisonViewModel Comparison { get; }
+    public CountryManagerViewModel CountryManager { get; }
 
     [ObservableProperty]
     private int _selectedTabIndex;
@@ -16,11 +17,13 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(
         SettingsViewModel settings,
         PresetsViewModel presets,
-        ComparisonViewModel comparison)
+        ComparisonViewModel comparison,
+        CountryManagerViewModel countryManager)
     {
         Settings = settings;
         Presets = presets;
         Comparison = comparison;
+        CountryManager = countryManager;
 
         // When user clicks "Load into Comparison" in Presets view
         Presets.LoadPresetRequested += preset =>
@@ -35,5 +38,6 @@ public partial class MainViewModel : ObservableObject
         await Settings.LoadAsync();
         await Presets.LoadAsync(Settings.FolderTypeOptions);
         Comparison.Initialize(Settings.FolderTypeOptions);
+        await CountryManager.LoadAsync();
     }
 }

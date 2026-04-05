@@ -46,8 +46,10 @@ public partial class App : Application
         services.AddTransient<FolderScanService>();
         services.AddTransient<BinaryCompareService>();
         services.AddTransient<SpecialFileRuleService>();
+        services.AddTransient<CountryManagerScanService>();
 
         services.AddTransient<SettingsViewModel>();
+        services.AddTransient<CountryManagerViewModel>();
         services.AddTransient<PresetsViewModel>();
         services.AddTransient<ComparisonViewModel>();
         services.AddTransient<MainViewModel>();

@@ -12,6 +12,14 @@ public class AppDbContext : DbContext
     public DbSet<FolderPreset> FolderPresets => Set<FolderPreset>();
     public DbSet<FolderPresetSlot> FolderPresetSlots => Set<FolderPresetSlot>();
     public DbSet<PresetExclusion> PresetExclusions => Set<PresetExclusion>();
+
+    // Country Manager
+    public DbSet<CountryEntry> CountryEntries => Set<CountryEntry>();
+    public DbSet<CanonicalFramework> CanonicalFrameworks => Set<CanonicalFramework>();
+    public DbSet<CountryFrameworkPresence> CountryFrameworkPresences => Set<CountryFrameworkPresence>();
+    public DbSet<CanonicalFile> CanonicalFiles => Set<CanonicalFile>();
+    public DbSet<CountryFilePresence> CountryFilePresences => Set<CountryFilePresence>();
+    public DbSet<CountryManagerSettings> CountryManagerSettings => Set<CountryManagerSettings>();
     public DbSet<SpecialFileRule> SpecialFileRules => Set<SpecialFileRule>();
     public DbSet<DxdbCsvMapping> DxdbCsvMappings => Set<DxdbCsvMapping>();
     public DbSet<FieldMapping> FieldMappings => Set<FieldMapping>();
@@ -85,6 +93,43 @@ public class AppDbContext : DbContext
              .HasForeignKey(x => x.DxdbCsvMappingId)
              .OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<CountryEntry>(e => e.HasKey(x => x.Code));
+
+        modelBuilder.Entity<CanonicalFramework>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.Name, x.Category }).IsUnique();
+        });
+
+        modelBuilder.Entity<CountryFrameworkPresence>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.CanonicalFramework)
+             .WithMany(x => x.Presences)
+             .HasForeignKey(x => x.CanonicalFrameworkId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CanonicalFile>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.CanonicalFramework)
+             .WithMany(x => x.Files)
+             .HasForeignKey(x => x.CanonicalFrameworkId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CountryFilePresence>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.CanonicalFile)
+             .WithMany(x => x.Presences)
+             .HasForeignKey(x => x.CanonicalFileId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CountryManagerSettings>(e => e.HasKey(x => x.Id));
 
         // Seed a default "Canonical" folder type as the normalization pivot
         modelBuilder.Entity<FolderType>().HasData(
