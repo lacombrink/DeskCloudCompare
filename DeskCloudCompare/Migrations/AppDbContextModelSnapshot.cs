@@ -492,7 +492,36 @@ namespace DeskCloudCompare.Migrations
                             ActualFileName = "Member Minutes-Resolution2.xlsx",
                             CanonicalFileName = "Shareholder Minutes-Resolution.xlsx",
                             FolderPath = "Documents\\DraftworX Files"
-                        });
+                        },
+                        // Financial statement files — Financial Data\DraftworX Files
+                        new { Id = 16, ActualFileName = "IFRS SME+ Consolidation.xlsx",  CanonicalFileName = "IFRS+ Consolidation.xlsx",          FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 17, ActualFileName = "IFRS Consolidation.xlsx",        CanonicalFileName = "IFRS+ Consolidation.xlsx",          FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 18, ActualFileName = "ASPE+ Financials.xlsx",          CanonicalFileName = "IFRS+ Financials.xlsx",             FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 19, ActualFileName = "IFRS SME+ Financials.xlsx",      CanonicalFileName = "IFRS+ Financials.xlsx",             FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 20, ActualFileName = "IFRS Financials.xlsx",           CanonicalFileName = "IFRS+ Financials.xlsx",             FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 21, ActualFileName = "Body Corp+ Financials.xlsx",     CanonicalFileName = "IFRS+ Financials.xlsx",             FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 22, ActualFileName = "CC+ Financials.xlsx",            CanonicalFileName = "IFRS+ Financials.xlsx",             FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 23, ActualFileName = "NPC+ Financials.xlsx",           CanonicalFileName = "IFRS+ Financials.xlsx",             FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 24, ActualFileName = "NPO+ Financials.xlsx",           CanonicalFileName = "IFRS+ Financials.xlsx",             FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 25, ActualFileName = "Partnership+ Financials.xlsx",   CanonicalFileName = "IFRS+ Financials.xlsx",             FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 26, ActualFileName = "School+ Financials.xlsx",        CanonicalFileName = "IFRS+ Financials.xlsx",             FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 27, ActualFileName = "Sole Prop+ Financials.xlsx",     CanonicalFileName = "IFRS+ Financials.xlsx",             FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 28, ActualFileName = "Trust+ Financials.xlsx",         CanonicalFileName = "IFRS+ Financials.xlsx",             FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 29, ActualFileName = "FRS102(1A) Consolidation.xlsx",  CanonicalFileName = "FRS102 Consolidation.xlsx",         FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 30, ActualFileName = "FRS102(1A) Financials.xlsx",     CanonicalFileName = "FRS102 Financials.xlsx",            FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 31, ActualFileName = "FRS105 Financials.xlsx",         CanonicalFileName = "FRS102 Financials.xlsx",            FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 32, ActualFileName = "FRS101 Financials.xlsx",         CanonicalFileName = "FRS102 Financials.xlsx",            FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 33, ActualFileName = "Partnership(1A) Financials.xlsx",CanonicalFileName = "Partnership Financials.xlsx",       FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 34, ActualFileName = "Partnership(105) Financials.xlsx",CanonicalFileName = "Partnership Financials.xlsx",      FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 35, ActualFileName = "Sole Prop(1A) Financials.xlsx",  CanonicalFileName = "Sole Prop Financials.xlsx",         FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 36, ActualFileName = "Sole Prop(105) Financials.xlsx", CanonicalFileName = "Sole Prop Financials.xlsx",         FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 37, ActualFileName = "LLP(1A) Financials.xlsx",        CanonicalFileName = "LLP Financials.xlsx",               FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 38, ActualFileName = "Body Corporate_Afrikaans.xlsx",   CanonicalFileName = "Body Corporate Financials.xlsx",   FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 39, ActualFileName = "Close Corporation_Afrikaans.xlsx",CanonicalFileName = "Close Corporation Financials.xlsx",FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 40, ActualFileName = "IFRS SME_Afrikaans.xlsx",         CanonicalFileName = "IFRS SME Financials.xlsx",         FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 41, ActualFileName = "Partnership_Afrikaans.xlsx",      CanonicalFileName = "Partnership Financials.xlsx",      FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 42, ActualFileName = "Sole Proprietor_Afrikaans.xlsx",  CanonicalFileName = "Sole Proprietor Financials.xlsx",  FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 43, ActualFileName = "Trust Financials _Afrikaans.xlsx",CanonicalFileName = "Trust Financials.xlsx",            FolderPath = "Financial Data\\DraftworX Files" });
                 });
 
             modelBuilder.Entity("DeskCloudCompare.Models.MasterFileException", b =>
