@@ -1,0 +1,99 @@
+<UserControl x:Class="DeskCloudCompare.Views.FrameworkManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="5" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Config bar -->
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0" Text="Master Folder:" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <TextBox Grid.Column="1" Text="{Binding MasterFolderPath, UpdateSourceTrigger=PropertyChanged}"
+                     IsReadOnly="True" Background="#F8F8F8" VerticalAlignment="Center" Margin="0,0,4,0" />
+            <Button Grid.Column="2" Content="Browse…" Padding="8,3" Margin="0,0,12,0"
+                    Command="{Binding BrowseMasterFolderCommand}" IsEnabled="{Binding IsNotBusy}" />
+
+            <Button Grid.Column="3" Content="Scan" Padding="12,3" Margin="0,0,4,0"
+                    Background="#0078D4" Foreground="White"
+                    Command="{Binding ScanCommand}" IsEnabled="{Binding IsNotBusy}" />
+            <Button Grid.Column="4" Content="Cancel" Padding="8,3"
+                    Command="{Binding CancelScanCommand}" IsEnabled="{Binding IsBusy}" />
+
+            <TextBlock Grid.Column="5" Text="{Binding StatusMessage}"
+                       VerticalAlignment="Center" Margin="12,0,0,0"
+                       Foreground="#555" FontStyle="Italic" />
+        </Grid>
+
+        <!-- Type Group × Framework matrix -->
+        <GroupBox Grid.Row="1" Header="Framework Type Matrix  (double-click a row to see file detail)">
+            <DataGrid x:Name="_matrixGrid"
+                      AutoGenerateColumns="True"
+                      CanUserAddRows="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="False"
+                      AlternatingRowBackground="#F5F5F5"
+                      GridLinesVisibility="All"
+                      SelectionMode="Single"
+                      EnableRowVirtualization="True"
+                      AutoGeneratingColumn="MatrixGrid_AutoGeneratingColumn"
+                      LoadingRow="MatrixGrid_LoadingRow"
+                      MouseDoubleClick="MatrixGrid_MouseDoubleClick" />
+        </GroupBox>
+
+        <GridSplitter Grid.Row="2" HorizontalAlignment="Stretch" Height="5" />
+
+        <!-- File detail -->
+        <GroupBox Grid.Row="3">
+            <GroupBox.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding FileDetailHeader}" VerticalAlignment="Center" />
+                    <Button Content="▶ Binary Compare" Padding="10,2" Margin="16,0,0,0"
+                            Background="#E65100" Foreground="White" FontWeight="SemiBold"
+                            Command="{Binding BinaryCompareCommand}"
+                            ToolTip="Hash all non-dxdb/fin files in this type group and compare" />
+                    <Button Content="Cancel" Padding="6,2" Margin="4,0,0,0"
+                            Command="{Binding CancelScanCommand}" IsEnabled="{Binding IsBusy}" />
+                    <ToggleButton Content="⚠ Show Issues Only" Padding="10,2" Margin="12,0,0,0"
+                                  Background="#F57F17" Foreground="White" FontWeight="SemiBold"
+                                  IsChecked="{Binding ShowIssuesOnly}"
+                                  Visibility="{Binding HasBinaryCompareData, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </StackPanel>
+            </GroupBox.Header>
+            <DataGrid x:Name="_fileGrid"
+                      AutoGenerateColumns="True"
+                      CanUserAddRows="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="True"
+                      AlternatingRowBackground="#F5F5F5"
+                      GridLinesVisibility="All"
+                      EnableRowVirtualization="True"
+                      AutoGeneratingColumn="FileGrid_AutoGeneratingColumn"
+                      LoadingRow="FileGrid_LoadingRow"
+                      PreviewMouseRightButtonDown="FileGrid_PreviewMouseRightButtonDown" />
+        </GroupBox>
+
+        <!-- Progress bar -->
+        <ProgressBar Grid.Row="4" Height="4" Margin="0,4,0,0"
+                     IsIndeterminate="{Binding IsBusy}"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+    </Grid>
+</UserControl>

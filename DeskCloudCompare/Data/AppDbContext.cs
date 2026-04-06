@@ -13,6 +13,14 @@ public class AppDbContext : DbContext
     public DbSet<FolderPresetSlot> FolderPresetSlots => Set<FolderPresetSlot>();
     public DbSet<PresetExclusion> PresetExclusions => Set<PresetExclusion>();
 
+    // Framework Manager
+    public DbSet<FrameworkManagerSettings> FrameworkManagerSettings => Set<FrameworkManagerSettings>();
+    public DbSet<MasterFrameworkEntry> MasterFrameworkEntries => Set<MasterFrameworkEntry>();
+    public DbSet<MasterCanonicalFile> MasterCanonicalFiles => Set<MasterCanonicalFile>();
+    public DbSet<MasterFilePresence> MasterFilePresences => Set<MasterFilePresence>();
+    public DbSet<MasterFileAlias> MasterFileAliases => Set<MasterFileAlias>();
+    public DbSet<MasterFileException> MasterFileExceptions => Set<MasterFileException>();
+
     // Country Manager
     public DbSet<CountryEntry> CountryEntries => Set<CountryEntry>();
     public DbSet<CanonicalFramework> CanonicalFrameworks => Set<CanonicalFramework>();
@@ -131,6 +139,69 @@ public class AppDbContext : DbContext
         });
 
         modelBuilder.Entity<CountryManagerSettings>(e => e.HasKey(x => x.Id));
+
+        // Framework Manager
+        modelBuilder.Entity<FrameworkManagerSettings>(e => e.HasKey(x => x.Id));
+
+        modelBuilder.Entity<MasterFrameworkEntry>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.CanonicalName).IsUnique();
+        });
+
+        modelBuilder.Entity<MasterCanonicalFile>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.TypeGroup, x.RelativePath }).IsUnique();
+        });
+
+        modelBuilder.Entity<MasterFilePresence>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.MasterCanonicalFileId, x.MasterFrameworkEntryId }).IsUnique();
+            e.HasOne(x => x.MasterCanonicalFile)
+             .WithMany(x => x.Presences)
+             .HasForeignKey(x => x.MasterCanonicalFileId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.MasterFrameworkEntry)
+             .WithMany(x => x.FilePresences)
+             .HasForeignKey(x => x.MasterFrameworkEntryId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MasterFileAlias>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.FolderPath, x.ActualFileName }).IsUnique();
+        });
+
+        modelBuilder.Entity<MasterFileException>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.TypeGroup, x.RelativePath, x.FrameworkCanonicalName }).IsUnique();
+        });
+
+        // Seed known file aliases (Director/Partner/Proprietor/Trustee/Member variants)
+        modelBuilder.Entity<MasterFileAlias>().HasData(
+            // Certificates
+            new MasterFileAlias { Id = 1,  FolderPath = @"Documents\DraftworX Files", ActualFileName = "Director Certificates.xlsx",   CanonicalFileName = "Director Certificates.xlsx" },
+            new MasterFileAlias { Id = 2,  FolderPath = @"Documents\DraftworX Files", ActualFileName = "Partner Certificates.xlsx",    CanonicalFileName = "Director Certificates.xlsx" },
+            new MasterFileAlias { Id = 3,  FolderPath = @"Documents\DraftworX Files", ActualFileName = "Proprietor Certificates.xlsx", CanonicalFileName = "Director Certificates.xlsx" },
+            new MasterFileAlias { Id = 4,  FolderPath = @"Documents\DraftworX Files", ActualFileName = "Trustee Certificates.xlsx",    CanonicalFileName = "Director Certificates.xlsx" },
+            new MasterFileAlias { Id = 5,  FolderPath = @"Documents\DraftworX Files", ActualFileName = "Member Certificates.xlsx",     CanonicalFileName = "Director Certificates.xlsx" },
+            // Directors Minutes-Resolution (singular)
+            new MasterFileAlias { Id = 6,  FolderPath = @"Documents\DraftworX Files", ActualFileName = "Directors Minutes-Resolution.xlsx", CanonicalFileName = "Directors Minutes-Resolution.xlsx" },
+            new MasterFileAlias { Id = 7,  FolderPath = @"Documents\DraftworX Files", ActualFileName = "Partner Minutes-Resolution.xlsx",   CanonicalFileName = "Directors Minutes-Resolution.xlsx" },
+            new MasterFileAlias { Id = 8,  FolderPath = @"Documents\DraftworX Files", ActualFileName = "Proprietor Minutes-Resolution.xlsx",CanonicalFileName = "Directors Minutes-Resolution.xlsx" },
+            new MasterFileAlias { Id = 9,  FolderPath = @"Documents\DraftworX Files", ActualFileName = "Trustee Minutes-Resolution.xlsx",   CanonicalFileName = "Directors Minutes-Resolution.xlsx" },
+            new MasterFileAlias { Id = 10, FolderPath = @"Documents\DraftworX Files", ActualFileName = "Member Minutes-Resolution.xlsx",    CanonicalFileName = "Directors Minutes-Resolution.xlsx" },
+            // Shareholder Minutes-Resolution2 variants
+            new MasterFileAlias { Id = 11, FolderPath = @"Documents\DraftworX Files", ActualFileName = "Shareholder Minutes-Resolution.xlsx",  CanonicalFileName = "Shareholder Minutes-Resolution.xlsx" },
+            new MasterFileAlias { Id = 12, FolderPath = @"Documents\DraftworX Files", ActualFileName = "Partner Minutes-Resolution2.xlsx",      CanonicalFileName = "Shareholder Minutes-Resolution.xlsx" },
+            new MasterFileAlias { Id = 13, FolderPath = @"Documents\DraftworX Files", ActualFileName = "Proprietor Minutes-Resolution2.xlsx",   CanonicalFileName = "Shareholder Minutes-Resolution.xlsx" },
+            new MasterFileAlias { Id = 14, FolderPath = @"Documents\DraftworX Files", ActualFileName = "Trustee Minutes-Resolution2.xlsx",      CanonicalFileName = "Shareholder Minutes-Resolution.xlsx" },
+            new MasterFileAlias { Id = 15, FolderPath = @"Documents\DraftworX Files", ActualFileName = "Member Minutes-Resolution2.xlsx",       CanonicalFileName = "Shareholder Minutes-Resolution.xlsx" }
+        );
 
         modelBuilder.Entity<CountryFileException>(e =>
         {

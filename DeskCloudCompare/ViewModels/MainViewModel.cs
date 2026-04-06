@@ -10,6 +10,7 @@ public partial class MainViewModel : ObservableObject
     public PresetsViewModel Presets { get; }
     public ComparisonViewModel Comparison { get; }
     public CountryManagerViewModel CountryManager { get; }
+    public FrameworkManagerViewModel FrameworkManager { get; }
 
     [ObservableProperty]
     private int _selectedTabIndex;
@@ -18,18 +19,20 @@ public partial class MainViewModel : ObservableObject
         SettingsViewModel settings,
         PresetsViewModel presets,
         ComparisonViewModel comparison,
-        CountryManagerViewModel countryManager)
+        CountryManagerViewModel countryManager,
+        FrameworkManagerViewModel frameworkManager)
     {
         Settings = settings;
         Presets = presets;
         Comparison = comparison;
         CountryManager = countryManager;
+        FrameworkManager = frameworkManager;
 
         // When user clicks "Load into Comparison" in Presets view
         Presets.LoadPresetRequested += preset =>
         {
             Comparison.LoadPreset(preset, Presets.Exclusions);
-            SelectedTabIndex = 0; // Switch to Comparison tab
+            SelectedTabIndex = 2; // DeskCloud Manager tab (index after reorder)
         };
     }
 
@@ -39,5 +42,6 @@ public partial class MainViewModel : ObservableObject
         await Presets.LoadAsync(Settings.FolderTypeOptions);
         Comparison.Initialize(Settings.FolderTypeOptions);
         await CountryManager.LoadAsync();
+        await FrameworkManager.LoadAsync();
     }
 }
