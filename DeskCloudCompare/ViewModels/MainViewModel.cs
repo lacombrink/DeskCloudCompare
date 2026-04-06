@@ -1,6 +1,4 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using DeskCloudCompare.Models;
-using DeskCloudCompare.Services;
 
 namespace DeskCloudCompare.ViewModels;
 
@@ -11,6 +9,7 @@ public partial class MainViewModel : ObservableObject
     public ComparisonViewModel Comparison { get; }
     public CountryManagerViewModel CountryManager { get; }
     public FrameworkManagerViewModel FrameworkManager { get; }
+    public SubFrameworkManagerViewModel SubFrameworkManager { get; }
 
     [ObservableProperty]
     private int _selectedTabIndex;
@@ -20,13 +19,15 @@ public partial class MainViewModel : ObservableObject
         PresetsViewModel presets,
         ComparisonViewModel comparison,
         CountryManagerViewModel countryManager,
-        FrameworkManagerViewModel frameworkManager)
+        FrameworkManagerViewModel frameworkManager,
+        SubFrameworkManagerViewModel subFrameworkManager)
     {
         Settings = settings;
         Presets = presets;
         Comparison = comparison;
         CountryManager = countryManager;
         FrameworkManager = frameworkManager;
+        SubFrameworkManager = subFrameworkManager;
 
         // When user clicks "Load into Comparison" in Presets view
         Presets.LoadPresetRequested += preset =>
@@ -43,5 +44,6 @@ public partial class MainViewModel : ObservableObject
         Comparison.Initialize(Settings.FolderTypeOptions);
         await CountryManager.LoadAsync();
         await FrameworkManager.LoadAsync();
+        await SubFrameworkManager.LoadAsync();
     }
 }

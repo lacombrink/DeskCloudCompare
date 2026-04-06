@@ -41,6 +41,44 @@ public class FrameworkManagerScanService(AppDbContext db)
         return FrameworkTypeGroup.Legacy;
     }
 
+    public static SubFrameworkGroup? ClassifySubFramework(string canonicalName)
+    {
+        // FRS102(1A) — must check before FRS102 (substring match order matters)
+        if (canonicalName.Contains("FRS102(1A)", StringComparison.OrdinalIgnoreCase))
+            return SubFrameworkGroup.FRS102_1A;
+
+        // FRS105
+        if (canonicalName.Contains("FRS105", StringComparison.OrdinalIgnoreCase))
+            return SubFrameworkGroup.FRS105;
+
+        // FRS102 (plain — after 1A check)
+        if (canonicalName.Contains("FRS102", StringComparison.OrdinalIgnoreCase))
+            return SubFrameworkGroup.FRS102;
+
+        // FRS SORP
+        if (canonicalName.Contains("Charity SORP", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Contains("LLP SORP", StringComparison.OrdinalIgnoreCase))
+            return SubFrameworkGroup.FRS_SORP;
+
+        // IFRS+ group — IFRS+, IFRS+ Consoli, IFRS_Company, IFRS Consoli_Company, FRS101
+        if (canonicalName.Equals("IFRS+", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Equals("IFRS+ Consoli", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Equals("IFRS_Company", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Equals("IFRS Consoli_Company", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.StartsWith("FRS101", StringComparison.OrdinalIgnoreCase))
+            return SubFrameworkGroup.IFRS_Plus;
+
+        // IFRS SME+ group — IFRS SME+, entity variants with "+"
+        if (canonicalName.StartsWith("IFRS SME+", StringComparison.OrdinalIgnoreCase) ||
+            (canonicalName.Contains("+") &&
+             !canonicalName.Contains("IFRS+", StringComparison.OrdinalIgnoreCase) &&
+             !canonicalName.Contains("FRS101", StringComparison.OrdinalIgnoreCase)))
+            return SubFrameworkGroup.IFRS_SME;
+
+        // Everything else excluded (Legacy, Arabic, ASPE, plain IFRS SME, etc.)
+        return null;
+    }
+
     /// <summary>Strip the country suffix (" ZZ", "_ZZ", " ZA", etc.) from a folder name.</summary>
     public static string GetCanonicalName(string folderName)
     {
@@ -125,6 +163,7 @@ public class FrameworkManagerScanService(AppDbContext db)
                     CanonicalName = canonicalName,
                     FolderName = folderName,
                     TypeGroup = typeGroup,
+                    SubGroup = ClassifySubFramework(canonicalName),
                     SortOrder = sortOrder++
                 };
                 db.MasterFrameworkEntries.Add(entry);

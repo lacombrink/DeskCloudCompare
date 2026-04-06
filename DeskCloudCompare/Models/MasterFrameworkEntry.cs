@@ -9,6 +9,7 @@ public class MasterFrameworkEntry
     public string CanonicalName { get; set; } = string.Empty;  // "IFRS+"
     public string FolderName { get; set; } = string.Empty;     // "IFRS+ ZZ"
     public FrameworkTypeGroup TypeGroup { get; set; }
+    public SubFrameworkGroup? SubGroup { get; set; }  // null = excluded from Sub Framework Manager
     public int SortOrder { get; set; }
 
     public ICollection<MasterFilePresence> FilePresences { get; set; } = new List<MasterFilePresence>();

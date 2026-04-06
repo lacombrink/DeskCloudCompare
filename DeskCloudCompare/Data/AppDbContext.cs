@@ -13,8 +13,9 @@ public class AppDbContext : DbContext
     public DbSet<FolderPresetSlot> FolderPresetSlots => Set<FolderPresetSlot>();
     public DbSet<PresetExclusion> PresetExclusions => Set<PresetExclusion>();
 
-    // Framework Manager
+    // Framework Manager + Sub Framework Manager
     public DbSet<FrameworkManagerSettings> FrameworkManagerSettings => Set<FrameworkManagerSettings>();
+    public DbSet<SubFrameworkFileException> SubFrameworkFileExceptions => Set<SubFrameworkFileException>();
     public DbSet<MasterFrameworkEntry> MasterFrameworkEntries => Set<MasterFrameworkEntry>();
     public DbSet<MasterCanonicalFile> MasterCanonicalFiles => Set<MasterCanonicalFile>();
     public DbSet<MasterFilePresence> MasterFilePresences => Set<MasterFilePresence>();
@@ -179,6 +180,12 @@ public class AppDbContext : DbContext
         {
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.TypeGroup, x.RelativePath, x.FrameworkCanonicalName }).IsUnique();
+        });
+
+        modelBuilder.Entity<SubFrameworkFileException>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.SubGroup, x.RelativePath, x.FrameworkCanonicalName }).IsUnique();
         });
 
         // Seed known file aliases (Director/Partner/Proprietor/Trustee/Member variants)

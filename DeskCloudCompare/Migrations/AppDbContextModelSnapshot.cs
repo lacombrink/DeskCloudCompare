@@ -566,6 +566,9 @@ namespace DeskCloudCompare.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("SubGroup")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("TypeGroup")
                         .HasColumnType("INTEGER");
 
@@ -575,6 +578,31 @@ namespace DeskCloudCompare.Migrations
                         .IsUnique();
 
                     b.ToTable("MasterFrameworkEntries");
+                });
+
+            modelBuilder.Entity("DeskCloudCompare.Models.SubFrameworkFileException", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FrameworkCanonicalName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RelativePath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SubGroup")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubGroup", "RelativePath", "FrameworkCanonicalName")
+                        .IsUnique();
+
+                    b.ToTable("SubFrameworkFileExceptions");
                 });
 
             modelBuilder.Entity("DeskCloudCompare.Models.PathTranslationRule", b =>

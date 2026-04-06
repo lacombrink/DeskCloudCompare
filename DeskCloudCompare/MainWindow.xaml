@@ -37,6 +37,10 @@
                 <views:FrameworkManagerView DataContext="{Binding FrameworkManager}" />
             </TabItem>
 
+            <TabItem Header="Sub Framework Manager">
+                <views:SubFrameworkManagerView DataContext="{Binding SubFrameworkManager}" />
+            </TabItem>
+
             <TabItem Header="Data Compare">
                 <views:DataCompareView />
             </TabItem>

@@ -52,6 +52,7 @@ public partial class App : Application
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<CountryManagerViewModel>();
         services.AddTransient<FrameworkManagerViewModel>();
+        services.AddTransient<SubFrameworkManagerViewModel>();
         services.AddTransient<PresetsViewModel>();
         services.AddTransient<ComparisonViewModel>();
         services.AddTransient<MainViewModel>();
