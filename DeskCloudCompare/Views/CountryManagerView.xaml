@@ -25,6 +25,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -42,10 +43,21 @@
             <Button Grid.Column="5" Content="Scan" Padding="12,3" Margin="0,0,4,0"
                     Background="#0078D4" Foreground="White"
                     Command="{Binding ScanCommand}" IsEnabled="{Binding IsNotBusy}" />
-            <Button Grid.Column="6" Content="Cancel" Padding="8,3" Margin="0,0,0,0"
+            <Button Grid.Column="6" Content="Cancel" Padding="8,3" Margin="0,0,12,0"
                     Command="{Binding CancelScanCommand}" IsEnabled="{Binding IsBusy}" />
 
-            <TextBlock Grid.Column="7" Text="{Binding StatusMessage}"
+            <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="⚠ All Issues" Padding="10,3" Margin="0,0,4,0"
+                        Background="#C62828" Foreground="White" FontWeight="SemiBold"
+                        Command="{Binding ShowAllIssuesCommand}" IsEnabled="{Binding IsNotBusy}"
+                        ToolTip="Show all files across every framework that have missing or mismatched content" />
+                <Button Content="E  All Exceptions" Padding="10,3" Margin="0,0,0,0"
+                        Background="#E65100" Foreground="White" FontWeight="SemiBold"
+                        Command="{Binding ShowAllExceptionsCommand}" IsEnabled="{Binding IsNotBusy}"
+                        ToolTip="Show all files across every framework that have been marked as exceptions" />
+            </StackPanel>
+
+            <TextBlock Grid.Column="8" Text="{Binding StatusMessage}"
                        VerticalAlignment="Center" Margin="12,0,0,0"
                        Foreground="#555" FontStyle="Italic" />
         </Grid>
@@ -72,10 +84,7 @@
         <GroupBox Grid.Row="3">
             <GroupBox.Header>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding SelectedFrameworkName,
-                               StringFormat='File Detail — {0}',
-                               FallbackValue='File Detail  (double-click a framework row above)'}"
-                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding FileDetailHeader}" VerticalAlignment="Center" />
                     <Button Content="▶ Binary Compare" Padding="10,2" Margin="16,0,0,0"
                             Background="#E65100" Foreground="White" FontWeight="SemiBold"
                             Command="{Binding BinaryCompareCommand}"

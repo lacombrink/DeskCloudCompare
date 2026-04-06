@@ -26,6 +26,7 @@ public partial class CountryManagerViewModel : ObservableObject
     [ObservableProperty] private int _selectedFrameworkId;
     [ObservableProperty] private bool _hasBinaryCompareData;
     [ObservableProperty] private bool _showIssuesOnly;
+    [ObservableProperty] private string _fileDetailHeader = "File Detail  (double-click a framework row above)";
 
     public bool IsNotBusy => !IsBusy;
 
@@ -144,6 +145,145 @@ public partial class CountryManagerViewModel : ObservableObject
 
     [RelayCommand]
     private void CancelScan() => _cts?.Cancel();
+
+    // -----------------------------------------------------------------------
+    // Global views — all issues / all exceptions across every framework
+    // -----------------------------------------------------------------------
+
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private async Task ShowAllIssues()
+    {
+        IsBusy = true;
+        try
+        {
+            await BuildGlobalTableAsync(GlobalViewMode.Issues);
+        }
+        finally { IsBusy = false; }
+    }
+
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private async Task ShowAllExceptions()
+    {
+        IsBusy = true;
+        try
+        {
+            await BuildGlobalTableAsync(GlobalViewMode.Exceptions);
+        }
+        finally { IsBusy = false; }
+    }
+
+    private enum GlobalViewMode { Issues, Exceptions }
+
+    private async Task BuildGlobalTableAsync(GlobalViewMode mode)
+    {
+        var allCountries = await _db.CountryEntries.OrderBy(c => c.SortOrder).ToListAsync();
+        var countries = allCountries
+            .Where(c => !c.Code.Equals(MasterCountryCode, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var frameworks = await _db.CanonicalFrameworks
+            .OrderBy(f => f.Category).ThenBy(f => f.Name)
+            .ToListAsync();
+
+        var allFwPresences = await _db.CountryFrameworkPresences.ToListAsync();
+
+        var allFiles = await _db.CanonicalFiles
+            .OrderBy(f => f.RelativePath)
+            .ToListAsync();
+
+        var allFilePresences = await _db.CountryFilePresences.ToListAsync();
+
+        var masterHashes = allFilePresences
+            .Where(p => p.CountryCode.Equals(MasterCountryCode, StringComparison.OrdinalIgnoreCase)
+                     && p.BinaryHash != null)
+            .ToDictionary(p => p.CanonicalFileId, p => p.BinaryHash);
+
+        var dt = new DataTable();
+        dt.Columns.Add("_FileId", typeof(int));
+        dt.Columns.Add("Framework", typeof(string));
+        dt.Columns.Add("File", typeof(string));
+        dt.Columns.Add("_IsDxdb", typeof(bool));
+        dt.Columns.Add("_IsFinancialData", typeof(bool));
+        foreach (var c in countries)
+            dt.Columns.Add(c.Code, typeof(string));
+
+        foreach (var fw in frameworks)
+        {
+            var fwPresentCodes = allFwPresences
+                .Where(p => p.CanonicalFrameworkId == fw.Id)
+                .Select(p => p.CountryCode)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var files = allFiles.Where(f => f.CanonicalFrameworkId == fw.Id);
+
+            foreach (var file in files)
+            {
+                var cellValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                bool hasIssue = false, hasException = false;
+
+                foreach (var c in countries)
+                {
+                    var applicable = fwPresentCodes.Contains(c.Code);
+                    var presence = allFilePresences.FirstOrDefault(
+                        p => p.CanonicalFileId == file.Id && p.CountryCode == c.Code);
+
+                    string cell;
+                    if (!applicable)
+                    {
+                        cell = "";
+                    }
+                    else if (presence != null)
+                    {
+                        cell = BuildPresentCellStatus(file, presence, masterHashes);
+                        if (cell == "≠") hasIssue = true;
+                    }
+                    else if (IsException(fw.Name, fw.Category, file.RelativePath, c.Code))
+                    {
+                        cell = "E";
+                        hasException = true;
+                    }
+                    else
+                    {
+                        cell = "X";
+                        hasIssue = true;
+                    }
+                    cellValues[c.Code] = cell;
+                }
+
+                bool include = mode == GlobalViewMode.Issues
+                    ? hasIssue
+                    : hasException;
+
+                if (!include) continue;
+
+                var row = dt.NewRow();
+                row["_FileId"] = file.Id;
+                row["Framework"] = $"{fw.Category}: {fw.Name}";
+                row["File"] = file.RelativePath;
+                row["_IsDxdb"] = file.IsDxdb;
+                row["_IsFinancialData"] = file.IsFinancialData;
+                foreach (var c in countries)
+                    row[c.Code] = cellValues[c.Code];
+                dt.Rows.Add(row);
+            }
+        }
+
+        SelectedFrameworkId = 0;
+        SelectedFrameworkName = string.Empty;
+
+        if (mode == GlobalViewMode.Issues)
+        {
+            FileDetailHeader = $"All Issues — {dt.Rows.Count} files with missing or mismatched content";
+            StatusMessage = $"Found {dt.Rows.Count} files with issues across all frameworks.";
+        }
+        else
+        {
+            FileDetailHeader = $"All Exceptions — {dt.Rows.Count} files with marked exceptions";
+            StatusMessage = $"Found {dt.Rows.Count} files with exceptions across all frameworks.";
+        }
+
+        FileDetailTable = dt;
+    }
 
     // -----------------------------------------------------------------------
     // Framework selection → file detail
@@ -465,6 +605,7 @@ public partial class CountryManagerViewModel : ObservableObject
         }
 
         FileDetailTable = dt;
+        FileDetailHeader = $"File Detail — {SelectedFrameworkName}";
         StatusMessage = $"{SelectedFrameworkName} — {files.Count} files × {countries.Count} countries.";
     }
 

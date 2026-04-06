@@ -102,6 +102,13 @@ public partial class CountryManagerView : UserControl
             return;
         }
 
+        // "Framework" column (global views) — fixed width
+        if (name == "Framework")
+        {
+            e.Column.Width = 260;
+            return;
+        }
+
         // "File" column — wide
         if (name == "File")
         {
