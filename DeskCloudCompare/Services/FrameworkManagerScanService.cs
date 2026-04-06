@@ -191,6 +191,11 @@ public class FrameworkManagerScanService(AppDbContext db)
         Dictionary<(FrameworkTypeGroup, string), MasterCanonicalFile> fileCache,
         CancellationToken ct)
     {
+        // Track canonical paths already seen in this folder to skip alias duplicates
+        // (e.g. both Director Certificates.xlsx and Partner Certificates.xlsx in the same folder
+        //  both resolve to the same canonical file — only the first should create a presence).
+        var seenInThisFolder = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var filePath in Directory.EnumerateFiles(fwDir, "*", SearchOption.AllDirectories))
         {
             ct.ThrowIfCancellationRequested();
@@ -209,6 +214,10 @@ public class FrameworkManagerScanService(AppDbContext db)
             var canonicalRelPath = string.IsNullOrEmpty(folderRel)
                 ? canonicalFileName
                 : folderRel + Path.DirectorySeparatorChar + canonicalFileName;
+
+            // Skip if this canonical path already has a presence for this framework folder
+            if (!seenInThisFolder.Add(canonicalRelPath.ToUpperInvariant()))
+                continue;
 
             var cacheKey = (typeGroup, canonicalRelPath.ToUpperInvariant());
 
