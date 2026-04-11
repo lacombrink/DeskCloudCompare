@@ -55,10 +55,17 @@ public class FrameworkManagerScanService(AppDbContext db)
         if (canonicalName.Contains("FRS102", StringComparison.OrdinalIgnoreCase))
             return SubFrameworkGroup.FRS102;
 
-        // FRS SORP
-        if (canonicalName.Contains("Charity SORP", StringComparison.OrdinalIgnoreCase) ||
-            canonicalName.Contains("LLP SORP", StringComparison.OrdinalIgnoreCase))
-            return SubFrameworkGroup.FRS_SORP;
+        // LLP SORP(1A) → FRS102_1A (must check before plain LLP SORP)
+        if (canonicalName.Contains("LLP SORP(1A)", StringComparison.OrdinalIgnoreCase))
+            return SubFrameworkGroup.FRS102_1A;
+
+        // LLP SORP (plain) → FRS102
+        if (canonicalName.Contains("LLP SORP", StringComparison.OrdinalIgnoreCase))
+            return SubFrameworkGroup.FRS102;
+
+        // Charity SORP → dedicated Charity sub-group
+        if (canonicalName.Contains("Charity SORP", StringComparison.OrdinalIgnoreCase))
+            return SubFrameworkGroup.Charity;
 
         // IFRS+ group — IFRS+, IFRS+ Consoli, IFRS_Company, IFRS Consoli_Company, FRS101
         if (canonicalName.Equals("IFRS+", StringComparison.OrdinalIgnoreCase) ||
@@ -68,6 +75,10 @@ public class FrameworkManagerScanService(AppDbContext db)
             canonicalName.StartsWith("FRS101", StringComparison.OrdinalIgnoreCase))
             return SubFrameworkGroup.IFRS_Plus;
 
+        // ASPE+ — dedicated sub-group (must check before "+" catch-all)
+        if (canonicalName.StartsWith("ASPE", StringComparison.OrdinalIgnoreCase))
+            return SubFrameworkGroup.ASPE_Plus;
+
         // IFRS SME+ group — IFRS SME+, entity variants with "+"
         if (canonicalName.StartsWith("IFRS SME+", StringComparison.OrdinalIgnoreCase) ||
             (canonicalName.Contains("+") &&
@@ -75,7 +86,7 @@ public class FrameworkManagerScanService(AppDbContext db)
              !canonicalName.Contains("FRS101", StringComparison.OrdinalIgnoreCase)))
             return SubFrameworkGroup.IFRS_SME;
 
-        // Everything else excluded (Legacy, Arabic, ASPE, plain IFRS SME, etc.)
+        // Everything else excluded (Legacy, Arabic, plain IFRS SME, etc.)
         return null;
     }
 

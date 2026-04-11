@@ -144,8 +144,10 @@ public partial class SubFrameworkManagerViewModel : ObservableObject
             SubFrameworkGroup.FRS102_1A => FrameworkTypeGroup.FRS,
             SubFrameworkGroup.FRS105    => FrameworkTypeGroup.FRS,
             SubFrameworkGroup.FRS_SORP  => FrameworkTypeGroup.FRS,
+            SubFrameworkGroup.Charity   => FrameworkTypeGroup.FRS,
             SubFrameworkGroup.IFRS_Plus => FrameworkTypeGroup.IFRS,
             SubFrameworkGroup.IFRS_SME  => FrameworkTypeGroup.IFRS,
+            SubFrameworkGroup.ASPE_Plus => FrameworkTypeGroup.IFRS,
             _                           => FrameworkTypeGroup.Legacy
         };
 
@@ -181,6 +183,44 @@ public partial class SubFrameworkManagerViewModel : ObservableObject
         if (file == null) return;
         foreach (var fw in frameworkNames)
             await AddExceptionAsync(_selectedSubGroup, file.RelativePath, fw);
+        await _db.SaveChangesAsync();
+        await BuildFileDetailTableAsync(_selectedSubGroup);
+    }
+
+    public async Task RemoveExceptionAsync(int fileId, string frameworkName)
+    {
+        var file = await _db.MasterCanonicalFiles.FindAsync(fileId);
+        if (file == null) return;
+        var key = (_selectedSubGroup, file.RelativePath, frameworkName);
+        var ex = await _db.SubFrameworkFileExceptions.FirstOrDefaultAsync(e =>
+            e.SubGroup == _selectedSubGroup &&
+            e.RelativePath == file.RelativePath &&
+            e.FrameworkCanonicalName == frameworkName);
+        if (ex != null)
+        {
+            _db.SubFrameworkFileExceptions.Remove(ex);
+            _exceptions.Remove(key);
+            await _db.SaveChangesAsync();
+        }
+        await BuildFileDetailTableAsync(_selectedSubGroup);
+    }
+
+    public async Task RemoveRowExceptionsAsync(int fileId, IEnumerable<string> frameworkNames)
+    {
+        var file = await _db.MasterCanonicalFiles.FindAsync(fileId);
+        if (file == null) return;
+        foreach (var fw in frameworkNames)
+        {
+            var ex = await _db.SubFrameworkFileExceptions.FirstOrDefaultAsync(e =>
+                e.SubGroup == _selectedSubGroup &&
+                e.RelativePath == file.RelativePath &&
+                e.FrameworkCanonicalName == fw);
+            if (ex != null)
+            {
+                _db.SubFrameworkFileExceptions.Remove(ex);
+                _exceptions.Remove((_selectedSubGroup, file.RelativePath, fw));
+            }
+        }
         await _db.SaveChangesAsync();
         await BuildFileDetailTableAsync(_selectedSubGroup);
     }
@@ -247,13 +287,16 @@ public partial class SubFrameworkManagerViewModel : ObservableObject
         var typeGroup = GetParentTypeGroup(subGroup);
         var entryIds = entries.Select(e => e.Id).ToList();
 
-        var files = await _db.MasterCanonicalFiles
-            .Where(f => f.TypeGroup == typeGroup)
-            .OrderBy(f => f.RelativePath)
-            .ToListAsync();
-
         var presences = await _db.MasterFilePresences
             .Where(p => entryIds.Contains(p.MasterFrameworkEntryId))
+            .ToListAsync();
+
+        // Only show files that exist in at least one framework within this sub-group
+        var presentFileIds = presences.Select(p => p.MasterCanonicalFileId).ToHashSet();
+
+        var files = await _db.MasterCanonicalFiles
+            .Where(f => f.TypeGroup == typeGroup && presentFileIds.Contains(f.Id))
+            .OrderBy(f => f.RelativePath)
             .ToListAsync();
 
         var refEntry = entries.FirstOrDefault(e =>

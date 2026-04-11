@@ -86,6 +86,7 @@
                       AlternatingRowBackground="#F5F5F5"
                       GridLinesVisibility="All"
                       EnableRowVirtualization="True"
+                      SelectionMode="Extended"
                       AutoGeneratingColumn="FileGrid_AutoGeneratingColumn"
                       LoadingRow="FileGrid_LoadingRow"
                       PreviewMouseRightButtonDown="FileGrid_PreviewMouseRightButtonDown" />

@@ -209,6 +209,129 @@ public partial class FrameworkManagerViewModel : ObservableObject
         await BuildFileDetailTableAsync(_selectedTypeGroup);
     }
 
+    public async Task RemoveExceptionAsync(int fileId, string frameworkName)
+    {
+        var file = await _db.MasterCanonicalFiles.FindAsync(fileId);
+        if (file == null) return;
+        var ex = await _db.MasterFileExceptions.FirstOrDefaultAsync(e =>
+            e.TypeGroup == file.TypeGroup &&
+            e.RelativePath == file.RelativePath &&
+            e.FrameworkCanonicalName == frameworkName);
+        if (ex != null)
+        {
+            _db.MasterFileExceptions.Remove(ex);
+            _exceptions.Remove((file.TypeGroup, file.RelativePath, frameworkName));
+            await _db.SaveChangesAsync();
+        }
+        await BuildFileDetailTableAsync(_selectedTypeGroup);
+    }
+
+    public async Task RemoveRowExceptionsAsync(int fileId, IEnumerable<string> frameworkNames)
+    {
+        var file = await _db.MasterCanonicalFiles.FindAsync(fileId);
+        if (file == null) return;
+        foreach (var fw in frameworkNames)
+        {
+            var ex = await _db.MasterFileExceptions.FirstOrDefaultAsync(e =>
+                e.TypeGroup == file.TypeGroup &&
+                e.RelativePath == file.RelativePath &&
+                e.FrameworkCanonicalName == fw);
+            if (ex != null)
+            {
+                _db.MasterFileExceptions.Remove(ex);
+                _exceptions.Remove((file.TypeGroup, file.RelativePath, fw));
+            }
+        }
+        await _db.SaveChangesAsync();
+        await BuildFileDetailTableAsync(_selectedTypeGroup);
+    }
+
+    /// <summary>
+    /// Validate that no framework has more than one of the selected files, then collapse
+    /// all slave files into the master: reassign presences, create file aliases, remove slaves.
+    /// Returns (true, "") on success, or (false, errorMessage) on validation failure.
+    /// </summary>
+    public async Task<(bool success, string error)> ValidateAndCreateCanonicalAliasAsync(
+        List<int> fileIds, int masterFileId)
+    {
+        if (fileIds.Count < 2)
+            return (false, "Select at least two files to create a canonical alias.");
+
+        // Validate: no framework should have more than one of the selected files
+        var presences = await _db.MasterFilePresences
+            .Where(p => fileIds.Contains(p.MasterCanonicalFileId))
+            .ToListAsync();
+
+        var conflict = presences
+            .GroupBy(p => p.MasterFrameworkEntryId)
+            .FirstOrDefault(g => g.Select(p => p.MasterCanonicalFileId).Distinct().Count() > 1);
+
+        if (conflict != null)
+            return (false, "Invalid selection for canonical creation: at least one framework has more than one of the selected files in the same folder.");
+
+        var masterFile = await _db.MasterCanonicalFiles.FindAsync(masterFileId);
+        if (masterFile == null)
+            return (false, "Master file not found.");
+
+        var slaveFileIds = fileIds.Where(id => id != masterFileId).ToList();
+        var slaveFiles = await _db.MasterCanonicalFiles
+            .Where(f => slaveFileIds.Contains(f.Id))
+            .Include(f => f.Presences)
+            .ToListAsync();
+
+        foreach (var slave in slaveFiles)
+        {
+            // Build alias: (folderPath, slaveFileName) → masterFileName
+            var folderPath = Path.GetDirectoryName(slave.RelativePath)
+                             ?.Replace('/', Path.DirectorySeparatorChar) ?? string.Empty;
+            var slaveFileName = Path.GetFileName(slave.RelativePath);
+            var masterFileName = Path.GetFileName(masterFile.RelativePath);
+
+            var existingAlias = await _db.MasterFileAliases.FirstOrDefaultAsync(a =>
+                a.FolderPath == folderPath && a.ActualFileName == slaveFileName);
+
+            if (existingAlias == null)
+            {
+                _db.MasterFileAliases.Add(new MasterFileAlias
+                {
+                    FolderPath = folderPath,
+                    ActualFileName = slaveFileName,
+                    CanonicalFileName = masterFileName
+                });
+            }
+            else
+            {
+                existingAlias.CanonicalFileName = masterFileName;
+            }
+
+            // Reassign each presence from slave → master (skip if master already present there)
+            var slavePresences = slave.Presences.ToList();
+            var masterPresenceFrameworkIds = presences
+                .Where(p => p.MasterCanonicalFileId == masterFileId)
+                .Select(p => p.MasterFrameworkEntryId)
+                .ToHashSet();
+
+            foreach (var presence in slavePresences)
+            {
+                if (masterPresenceFrameworkIds.Contains(presence.MasterFrameworkEntryId))
+                {
+                    // Master already present in this framework — just drop the slave presence
+                    _db.MasterFilePresences.Remove(presence);
+                }
+                else
+                {
+                    presence.MasterCanonicalFileId = masterFileId;
+                }
+            }
+
+            _db.MasterCanonicalFiles.Remove(slave);
+        }
+
+        await _db.SaveChangesAsync();
+        await BuildFileDetailTableAsync(_selectedTypeGroup);
+        return (true, string.Empty);
+    }
+
     public bool IsException(FrameworkTypeGroup tg, string relPath, string frameworkName) =>
         _exceptions.Contains((tg, relPath, frameworkName));
 

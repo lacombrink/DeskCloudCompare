@@ -235,21 +235,24 @@ public class AppDbContext : DbContext
             new MasterFileAlias { Id = 32, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "FRS102(1A) Consolidation.xlsx",       CanonicalFileName = "FRS102 Financials.xlsx" },
             new MasterFileAlias { Id = 33, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "FRS102(1A) Financials.xlsx",          CanonicalFileName = "FRS102 Financials.xlsx" },
             new MasterFileAlias { Id = 34, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "FRS105 Financials.xlsx",              CanonicalFileName = "FRS102 Financials.xlsx" },
-            // FRS type group → Partnership Financials.xlsx
-            new MasterFileAlias { Id = 35, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Partnership(1A) Financials.xlsx",     CanonicalFileName = "Partnership Financials.xlsx" },
-            new MasterFileAlias { Id = 36, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Partnership(105) Financials.xlsx",    CanonicalFileName = "Partnership Financials.xlsx" },
-            // FRS type group → Sole Prop Financials.xlsx
-            new MasterFileAlias { Id = 37, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Sole Prop(1A) Financials.xlsx",       CanonicalFileName = "Sole Prop Financials.xlsx" },
-            new MasterFileAlias { Id = 38, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Sole Prop(105) Financials.xlsx",      CanonicalFileName = "Sole Prop Financials.xlsx" },
-            // FRS type group → LLP Financials.xlsx
-            new MasterFileAlias { Id = 39, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "LLP(1A) Financials.xlsx",             CanonicalFileName = "LLP Financials.xlsx" },
+            // FRS type group — variant names → FRS102 Financials.xlsx (all collapse to one canonical)
+            new MasterFileAlias { Id = 35, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Partnership(1A) Financials.xlsx",     CanonicalFileName = "FRS102 Financials.xlsx" },
+            new MasterFileAlias { Id = 36, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Partnership(105) Financials.xlsx",    CanonicalFileName = "FRS102 Financials.xlsx" },
+            new MasterFileAlias { Id = 37, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Sole Prop(1A) Financials.xlsx",       CanonicalFileName = "FRS102 Financials.xlsx" },
+            new MasterFileAlias { Id = 38, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Sole Prop(105) Financials.xlsx",      CanonicalFileName = "FRS102 Financials.xlsx" },
+            new MasterFileAlias { Id = 39, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "LLP(1A) Financials.xlsx",             CanonicalFileName = "FRS102 Financials.xlsx" },
             // Legacy type group: Afrikaans variants → canonical English name
             new MasterFileAlias { Id = 40, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Body Corporate_Afrikaans.xlsx",       CanonicalFileName = "Body Corporate Financials.xlsx" },
             new MasterFileAlias { Id = 41, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Close Corporation_Afrikaans.xlsx",    CanonicalFileName = "Close Corporation Financials.xlsx" },
             new MasterFileAlias { Id = 42, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "IFRS SME_Afrikaans.xlsx",             CanonicalFileName = "IFRS SME Financials.xlsx" },
-            new MasterFileAlias { Id = 43, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Partnership_Afrikaans.xlsx",          CanonicalFileName = "Partnership Financials.xlsx" },
+            new MasterFileAlias { Id = 43, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Partnership_Afrikaans.xlsx",          CanonicalFileName = "FRS102 Financials.xlsx" },
             new MasterFileAlias { Id = 44, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Sole Proprietor_Afrikaans.xlsx",      CanonicalFileName = "Sole Proprietor Financials.xlsx" },
-            new MasterFileAlias { Id = 45, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Trust Financials _Afrikaans.xlsx",    CanonicalFileName = "Trust Financials.xlsx" }
+            new MasterFileAlias { Id = 45, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Trust Financials _Afrikaans.xlsx",    CanonicalFileName = "Trust Financials.xlsx" },
+            // FRS type group — entity financial file names for each sub-group → FRS102 Financials.xlsx
+            new MasterFileAlias { Id = 46, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Charity Financials.xlsx",             CanonicalFileName = "FRS102 Financials.xlsx" },
+            new MasterFileAlias { Id = 47, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "LLP Financials.xlsx",                 CanonicalFileName = "FRS102 Financials.xlsx" },
+            new MasterFileAlias { Id = 48, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Partnership Financials.xlsx",         CanonicalFileName = "FRS102 Financials.xlsx" },
+            new MasterFileAlias { Id = 49, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Sole Prop Financials.xlsx",           CanonicalFileName = "FRS102 Financials.xlsx" }
         );
 
         modelBuilder.Entity<CountryFileException>(e =>

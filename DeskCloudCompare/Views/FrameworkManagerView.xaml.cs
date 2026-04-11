@@ -157,45 +157,160 @@ public partial class FrameworkManagerView : UserControl
     }
 
     // -----------------------------------------------------------------------
-    // Right-click context menu — exception marking
+    // Right-click context menu — exception marking / removal / canonical alias creation
     // -----------------------------------------------------------------------
 
     private async void FileGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (Vm == null) return;
         var cell = FindVisualParent<DataGridCell>((DependencyObject)e.OriginalSource);
+
+        // ---- Multi-select: canonical alias creation ----
+        // If multiple rows are selected, offer canonical alias creation regardless of which cell was clicked.
+        var selectedRows = _fileGrid.SelectedItems
+            .OfType<DataRowView>()
+            .ToList();
+
+        if (selectedRows.Count > 1)
+        {
+            var menu = new ContextMenu();
+            var aliasItem = new MenuItem { Header = $"Create canonical alias from {selectedRows.Count} selected files…" };
+            aliasItem.Click += async (_, _) => await ShowCanonicalAliasDialogAsync(selectedRows);
+            menu.Items.Add(aliasItem);
+            menu.PlacementTarget = cell ?? (UIElement)sender;
+            menu.Placement = PlacementMode.MousePoint;
+            menu.IsOpen = true;
+            e.Handled = true;
+            return;
+        }
+
+        // ---- Single-row: exception marking / removal ----
         if (cell == null) return;
         var frameworkName = cell.Column?.Header?.ToString() ?? string.Empty;
         if (frameworkName.Length == 0 || frameworkName == "File") return;
         if (cell.DataContext is not DataRowView drv) return;
         var cellValue = drv[frameworkName]?.ToString() ?? string.Empty;
-        if (cellValue != "X") return;
 
         var fileId = (int)drv["_FileId"];
+        var menu2 = new ContextMenu();
 
-        var allMissing = _fileGrid.Columns
-            .Select(col => col.Header?.ToString() ?? string.Empty)
-            .Where(h => h.Length > 0 && h != "File" && !h.StartsWith("_"))
-            .Where(h => drv[h]?.ToString() == "X")
-            .ToList();
-
-        var menu = new ContextMenu();
-
-        var item1 = new MenuItem { Header = $"Mark exception for '{frameworkName}' only" };
-        item1.Click += async (_, _) => await Vm.MarkExceptionAsync(fileId, frameworkName);
-        menu.Items.Add(item1);
-
-        if (allMissing.Count > 1)
+        if (cellValue == "X")
         {
-            var item2 = new MenuItem { Header = $"Mark all {allMissing.Count} missing frameworks as exception" };
-            item2.Click += async (_, _) => await Vm.MarkRowExceptionsAsync(fileId, allMissing);
-            menu.Items.Add(item2);
+            var allMissing = _fileGrid.Columns
+                .Select(col => col.Header?.ToString() ?? string.Empty)
+                .Where(h => h.Length > 0 && h != "File" && !h.StartsWith("_"))
+                .Where(h => drv[h]?.ToString() == "X")
+                .ToList();
+
+            var item1 = new MenuItem { Header = $"Mark exception for '{frameworkName}' only" };
+            item1.Click += async (_, _) => await Vm.MarkExceptionAsync(fileId, frameworkName);
+            menu2.Items.Add(item1);
+
+            if (allMissing.Count > 1)
+            {
+                var item2 = new MenuItem { Header = $"Mark all {allMissing.Count} missing frameworks as exception" };
+                item2.Click += async (_, _) => await Vm.MarkRowExceptionsAsync(fileId, allMissing);
+                menu2.Items.Add(item2);
+            }
+        }
+        else if (cellValue == "E")
+        {
+            var allExceptions = _fileGrid.Columns
+                .Select(col => col.Header?.ToString() ?? string.Empty)
+                .Where(h => h.Length > 0 && h != "File" && !h.StartsWith("_"))
+                .Where(h => drv[h]?.ToString() == "E")
+                .ToList();
+
+            var item1 = new MenuItem { Header = $"Remove exception for '{frameworkName}'" };
+            item1.Click += async (_, _) => await Vm.RemoveExceptionAsync(fileId, frameworkName);
+            menu2.Items.Add(item1);
+
+            if (allExceptions.Count > 1)
+            {
+                var item2 = new MenuItem { Header = $"Remove all {allExceptions.Count} exceptions for this file" };
+                item2.Click += async (_, _) => await Vm.RemoveRowExceptionsAsync(fileId, allExceptions);
+                menu2.Items.Add(item2);
+            }
+        }
+        else
+        {
+            return;
         }
 
-        menu.PlacementTarget = cell;
-        menu.Placement = PlacementMode.MousePoint;
-        menu.IsOpen = true;
+        menu2.PlacementTarget = cell;
+        menu2.Placement = PlacementMode.MousePoint;
+        menu2.IsOpen = true;
         e.Handled = true;
+    }
+
+    private async Task ShowCanonicalAliasDialogAsync(List<DataRowView> selectedRows)
+    {
+        if (Vm == null) return;
+
+        var fileIds = selectedRows.Select(r => (int)r["_FileId"]).ToList();
+        var fileNames = selectedRows.Select(r => r["File"]?.ToString() ?? string.Empty).ToList();
+
+        // Simple picker dialog: choose which file is the canonical master
+        var dialog = new Window
+        {
+            Title = "Select canonical (master) file name",
+            Width = 600,
+            Height = 300,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = Window.GetWindow(this),
+            ResizeMode = ResizeMode.NoResize
+        };
+
+        var panel = new StackPanel { Margin = new Thickness(16) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Choose which file name is the canonical (master) name.\nAll other selected files will alias to this one.",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12)
+        });
+
+        var listBox = new ListBox { Height = 150 };
+        for (int i = 0; i < fileNames.Count; i++)
+            listBox.Items.Add(new ListBoxItem { Content = fileNames[i], Tag = fileIds[i] });
+        listBox.SelectedIndex = 0;
+        panel.Children.Add(listBox);
+
+        var btnPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        var okBtn = new Button { Content = "Create Alias", Padding = new Thickness(16, 4, 16, 4), IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+        var cancelBtn = new Button { Content = "Cancel", Padding = new Thickness(16, 4, 16, 4), IsCancel = true };
+        btnPanel.Children.Add(okBtn);
+        btnPanel.Children.Add(cancelBtn);
+        panel.Children.Add(btnPanel);
+
+        dialog.Content = panel;
+
+        bool confirmed = false;
+        okBtn.Click += (_, _) => { confirmed = true; dialog.Close(); };
+        cancelBtn.Click += (_, _) => { dialog.Close(); };
+        dialog.ShowDialog();
+
+        if (!confirmed) return;
+        if (listBox.SelectedItem is not ListBoxItem selectedItem) return;
+
+        var masterFileId = (int)selectedItem.Tag;
+        var (success, error) = await Vm.ValidateAndCreateCanonicalAliasAsync(fileIds, masterFileId);
+
+        if (success)
+        {
+            _fileGrid.SelectedItems.Clear();
+            MessageBox.Show("Canonical alias created successfully.", "Success",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else
+        {
+            MessageBox.Show(error, "Invalid Selection",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private static T? FindVisualParent<T>(DependencyObject child) where T : DependencyObject
