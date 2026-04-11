@@ -1,3 +1,4 @@
+using DeskCloudCompare.Services;
 using DeskCloudCompare.ViewModels;
 using Microsoft.Win32;
 using System.Collections.Specialized;
