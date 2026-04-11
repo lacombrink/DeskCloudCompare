@@ -68,28 +68,37 @@ public class FrameworkManagerScanService(AppDbContext db)
         if (canonicalName.Contains("Charity SORP", StringComparison.OrdinalIgnoreCase))
             return SubFrameworkGroup.Charity;
 
+        // IFRS SME+ group — IFRS SME+, IFRS SME+ Consoli, and all entity variants whose
+        //   names do NOT contain "IFRS SME+" (Body Corp+, CC+, Monthly+ Manpack, NPC+,
+        //   NPO+, Partnership+, School+, Sole Prop+, Trust+).
+        //   Must be checked BEFORE the IFRS_Plus catch-all, which would otherwise absorb
+        //   any framework name containing "+" that doesn't start with "IFRS SME+".
+        if (canonicalName.StartsWith("IFRS SME+", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Contains("IFRS SME+", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Equals("Body Corp+", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Equals("CC+", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.StartsWith("Monthly+ Manpack", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Equals("NPC+", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Equals("NPO+", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Equals("Partnership+", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Equals("School+", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.StartsWith("Sole Prop+", StringComparison.OrdinalIgnoreCase) ||
+            canonicalName.Equals("Trust+", StringComparison.OrdinalIgnoreCase))
+            return SubFrameworkGroup.IFRS_SME;
+
+        // ASPE+ — dedicated sub-group
+        if (canonicalName.StartsWith("ASPE", StringComparison.OrdinalIgnoreCase))
+            return SubFrameworkGroup.ASPE_Plus;
+
         // IFRS+ group — IFRS+, IFRS+ Consoli, IFRS_Company, IFRS Consoli_Company, FRS101,
-        //               and all IFRS entity variants: Body Corp+, CC+, Monthly+ Manpack,
-        //               NPC+, NPO+, Partnership+, School+, Sole Prop+, Trust+, etc.
-        //               (All "+" frameworks whose financials alias to IFRS+ Financials.xlsx)
+        //   and any remaining "+" frameworks (after IFRS SME and ASPE are excluded above).
         if (canonicalName.Equals("IFRS+", StringComparison.OrdinalIgnoreCase) ||
             canonicalName.Equals("IFRS+ Consoli", StringComparison.OrdinalIgnoreCase) ||
             canonicalName.Equals("IFRS_Company", StringComparison.OrdinalIgnoreCase) ||
             canonicalName.Equals("IFRS Consoli_Company", StringComparison.OrdinalIgnoreCase) ||
             canonicalName.StartsWith("FRS101", StringComparison.OrdinalIgnoreCase) ||
-            (canonicalName.Contains("+", StringComparison.Ordinal) &&
-             !canonicalName.StartsWith("IFRS SME+", StringComparison.OrdinalIgnoreCase) &&
-             !canonicalName.StartsWith("ASPE", StringComparison.OrdinalIgnoreCase)))
+            canonicalName.Contains("+", StringComparison.Ordinal))
             return SubFrameworkGroup.IFRS_Plus;
-
-        // ASPE+ — dedicated sub-group (must check before IFRS SME+ catch-all)
-        if (canonicalName.StartsWith("ASPE", StringComparison.OrdinalIgnoreCase))
-            return SubFrameworkGroup.ASPE_Plus;
-
-        // IFRS SME+ group — IFRS SME+ and all its entity variants
-        if (canonicalName.StartsWith("IFRS SME+", StringComparison.OrdinalIgnoreCase) ||
-            canonicalName.Contains("IFRS SME+", StringComparison.OrdinalIgnoreCase))
-            return SubFrameworkGroup.IFRS_SME;
 
         // Everything else excluded (Legacy, Arabic, plain IFRS SME, etc.)
         return null;
