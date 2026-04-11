@@ -18,6 +18,9 @@ public partial class CountryManagerView : UserControl
 
     private CountryManagerViewModel? Vm => DataContext as CountryManagerViewModel;
 
+    private readonly Dictionary<string, double> _savedFileGridWidths =
+        new(StringComparer.OrdinalIgnoreCase);
+
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (e.NewValue is CountryManagerViewModel vm)
@@ -26,9 +29,26 @@ public partial class CountryManagerView : UserControl
             {
                 if (args.PropertyName == nameof(CountryManagerViewModel.FrameworkMatrixTable))
                     _matrixGrid.ItemsSource = vm.FrameworkMatrixTable?.DefaultView;
+
                 if (args.PropertyName == nameof(CountryManagerViewModel.FileDetailTable))
+                {
+                    SaveFileGridWidths();
                     _fileGrid.ItemsSource = vm.FileDetailTable?.DefaultView;
+                }
             };
+        }
+    }
+
+    private void SaveFileGridWidths()
+    {
+        foreach (var col in _fileGrid.Columns)
+        {
+            var header = col.Header?.ToString() ?? string.Empty;
+            if (header.Length > 0 && !header.StartsWith("_"))
+            {
+                var px = col.ActualWidth > 0 ? col.ActualWidth : col.Width.Value;
+                if (px > 0) _savedFileGridWidths[header] = px;
+            }
         }
     }
 
@@ -105,7 +125,7 @@ public partial class CountryManagerView : UserControl
         // "Framework" column (global views) — fixed width
         if (name == "Framework")
         {
-            e.Column.Width = 280;
+            e.Column.Width = _savedFileGridWidths.TryGetValue(name, out var ffw) ? ffw : 280;
             e.Column.MinWidth = 160;
             return;
         }
@@ -113,7 +133,7 @@ public partial class CountryManagerView : UserControl
         // "File" column — wide fixed width (supports horizontal scrolling)
         if (name == "File")
         {
-            e.Column.Width = 380;
+            e.Column.Width = _savedFileGridWidths.TryGetValue(name, out var ffw2) ? ffw2 : 380;
             e.Column.MinWidth = 180;
             return;
         }
@@ -121,7 +141,7 @@ public partial class CountryManagerView : UserControl
         // Country columns — narrow, with "E" (exception) cell highlight
         if (e.PropertyType == typeof(string) && name.Length <= 3)
         {
-            e.Column.Width = 46;
+            e.Column.Width = _savedFileGridWidths.TryGetValue(name, out var cw) ? cw : 46;
 
             var cellStyle = new Style(typeof(DataGridCell));
 

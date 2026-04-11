@@ -380,11 +380,22 @@ public partial class SubFrameworkManagerViewModel : ObservableObject
                 .Where(p => p.MasterFrameworkEntryId == refEntry.Id && p.BinaryHash != null)
                 .ToDictionary(p => p.MasterCanonicalFileId, p => p.BinaryHash);
 
+        // Pre-compute which files were reached via an alias in at least one framework
+        var aliasedFileIds = presences
+            .Where(p =>
+            {
+                var f = files.FirstOrDefault(x => x.Id == p.MasterCanonicalFileId);
+                return f != null && !p.ActualFileName.Equals(f.FileName, StringComparison.OrdinalIgnoreCase);
+            })
+            .Select(p => p.MasterCanonicalFileId)
+            .ToHashSet();
+
         var dt = new DataTable();
         dt.Columns.Add("_FileId", typeof(int));
         dt.Columns.Add("File", typeof(string));
         dt.Columns.Add("_IsDxdb", typeof(bool));
         dt.Columns.Add("_IsFinancialData", typeof(bool));
+        dt.Columns.Add("_IsAlias", typeof(bool));
         foreach (var e in entries)
             dt.Columns.Add(e.CanonicalName, typeof(string));
 
@@ -423,6 +434,7 @@ public partial class SubFrameworkManagerViewModel : ObservableObject
             row["File"] = file.RelativePath;
             row["_IsDxdb"] = file.IsDxdb;
             row["_IsFinancialData"] = file.IsFinancialData;
+            row["_IsAlias"] = aliasedFileIds.Contains(file.Id);
             foreach (var e in entries)
                 row[e.CanonicalName] = cellValues[e.CanonicalName];
             dt.Rows.Add(row);

@@ -19,6 +19,9 @@ public partial class SubFrameworkManagerView : UserControl
 
     private SubFrameworkManagerViewModel? Vm => DataContext as SubFrameworkManagerViewModel;
 
+    private readonly Dictionary<string, double> _savedFileGridWidths =
+        new(StringComparer.OrdinalIgnoreCase);
+
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (e.NewValue is SubFrameworkManagerViewModel vm)
@@ -27,9 +30,26 @@ public partial class SubFrameworkManagerView : UserControl
             {
                 if (args.PropertyName == nameof(SubFrameworkManagerViewModel.SubMatrixTable))
                     _matrixGrid.ItemsSource = vm.SubMatrixTable?.DefaultView;
+
                 if (args.PropertyName == nameof(SubFrameworkManagerViewModel.FileDetailTable))
+                {
+                    SaveFileGridWidths();
                     _fileGrid.ItemsSource = vm.FileDetailTable?.DefaultView;
+                }
             };
+        }
+    }
+
+    private void SaveFileGridWidths()
+    {
+        foreach (var col in _fileGrid.Columns)
+        {
+            var header = col.Header?.ToString() ?? string.Empty;
+            if (header.Length > 0 && !header.StartsWith("_"))
+            {
+                var px = col.ActualWidth > 0 ? col.ActualWidth : col.Width.Value;
+                if (px > 0) _savedFileGridWidths[header] = px;
+            }
         }
     }
 
@@ -105,7 +125,7 @@ public partial class SubFrameworkManagerView : UserControl
 
         if (name == "File")
         {
-            e.Column.Width = 420;
+            e.Column.Width = _savedFileGridWidths.TryGetValue(name, out var fw) ? fw : 420;
             e.Column.MinWidth = 200;
             return;
         }
@@ -146,21 +166,23 @@ public partial class SubFrameworkManagerView : UserControl
             {
                 Header = name,
                 Binding = new System.Windows.Data.Binding($"[{name}]"),
-                Width = 100,
+                Width = _savedFileGridWidths.TryGetValue(name, out var sw) ? sw : 100,
                 CellStyle = cellStyle
             };
         }
     }
 
-    private static readonly SolidColorBrush _dxdbBrush = new(Color.FromRgb(0xFF, 0xF9, 0xC4));
-    private static readonly SolidColorBrush _finBrush  = new(Color.FromRgb(0xE3, 0xF2, 0xFD));
+    private static readonly SolidColorBrush _dxdbBrush  = new(Color.FromRgb(0xFF, 0xF9, 0xC4));
+    private static readonly SolidColorBrush _finBrush   = new(Color.FromRgb(0xE3, 0xF2, 0xFD));
+    private static readonly SolidColorBrush _aliasBrush = new(Color.FromRgb(0xC8, 0xE6, 0xC9)); // light green
 
     private void FileGrid_LoadingRow(object? sender, DataGridRowEventArgs e)
     {
         if (e.Row.Item is not DataRowView drv) return;
         var isDxdb    = drv["_IsDxdb"] as bool? ?? false;
         var isFinData = drv["_IsFinancialData"] as bool? ?? false;
-        e.Row.Background = isDxdb ? _dxdbBrush : isFinData ? _finBrush : null;
+        var isAlias   = drv["_IsAlias"] as bool? ?? false;
+        e.Row.Background = isDxdb ? _dxdbBrush : isFinData ? _finBrush : isAlias ? _aliasBrush : null;
     }
 
     // -----------------------------------------------------------------------

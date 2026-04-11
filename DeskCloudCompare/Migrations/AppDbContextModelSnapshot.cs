@@ -515,19 +515,24 @@ namespace DeskCloudCompare.Migrations
                         new { Id = 32, ActualFileName = "FRS102(1A) Consolidation.xlsx",     CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
                         new { Id = 33, ActualFileName = "FRS102(1A) Financials.xlsx",        CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
                         new { Id = 34, ActualFileName = "FRS105 Financials.xlsx",            CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
-                        // FRS type group → Partnership / Sole Prop / LLP
-                        new { Id = 35, ActualFileName = "Partnership(1A) Financials.xlsx",   CanonicalFileName = "Partnership Financials.xlsx",      FolderPath = "Financial Data\\DraftworX Files" },
-                        new { Id = 36, ActualFileName = "Partnership(105) Financials.xlsx",  CanonicalFileName = "Partnership Financials.xlsx",      FolderPath = "Financial Data\\DraftworX Files" },
-                        new { Id = 37, ActualFileName = "Sole Prop(1A) Financials.xlsx",     CanonicalFileName = "Sole Prop Financials.xlsx",        FolderPath = "Financial Data\\DraftworX Files" },
-                        new { Id = 38, ActualFileName = "Sole Prop(105) Financials.xlsx",    CanonicalFileName = "Sole Prop Financials.xlsx",        FolderPath = "Financial Data\\DraftworX Files" },
-                        new { Id = 39, ActualFileName = "LLP(1A) Financials.xlsx",           CanonicalFileName = "LLP Financials.xlsx",              FolderPath = "Financial Data\\DraftworX Files" },
+                        // FRS type group — variant names → FRS102 Financials.xlsx
+                        new { Id = 35, ActualFileName = "Partnership(1A) Financials.xlsx",   CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 36, ActualFileName = "Partnership(105) Financials.xlsx",  CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 37, ActualFileName = "Sole Prop(1A) Financials.xlsx",     CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 38, ActualFileName = "Sole Prop(105) Financials.xlsx",    CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 39, ActualFileName = "LLP(1A) Financials.xlsx",           CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
                         // Legacy type group: Afrikaans → canonical English name
                         new { Id = 40, ActualFileName = "Body Corporate_Afrikaans.xlsx",     CanonicalFileName = "Body Corporate Financials.xlsx",   FolderPath = "Financial Data\\DraftworX Files" },
                         new { Id = 41, ActualFileName = "Close Corporation_Afrikaans.xlsx",  CanonicalFileName = "Close Corporation Financials.xlsx",FolderPath = "Financial Data\\DraftworX Files" },
                         new { Id = 42, ActualFileName = "IFRS SME_Afrikaans.xlsx",           CanonicalFileName = "IFRS SME Financials.xlsx",         FolderPath = "Financial Data\\DraftworX Files" },
-                        new { Id = 43, ActualFileName = "Partnership_Afrikaans.xlsx",        CanonicalFileName = "Partnership Financials.xlsx",      FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 43, ActualFileName = "Partnership_Afrikaans.xlsx",        CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
                         new { Id = 44, ActualFileName = "Sole Proprietor_Afrikaans.xlsx",    CanonicalFileName = "Sole Proprietor Financials.xlsx",  FolderPath = "Financial Data\\DraftworX Files" },
-                        new { Id = 45, ActualFileName = "Trust Financials _Afrikaans.xlsx",  CanonicalFileName = "Trust Financials.xlsx",            FolderPath = "Financial Data\\DraftworX Files" });
+                        new { Id = 45, ActualFileName = "Trust Financials _Afrikaans.xlsx",  CanonicalFileName = "Trust Financials.xlsx",            FolderPath = "Financial Data\\DraftworX Files" },
+                        // FRS type group — entity financial file names for each sub-group → FRS102 Financials.xlsx
+                        new { Id = 46, ActualFileName = "Charity Financials.xlsx",           CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 47, ActualFileName = "LLP Financials.xlsx",               CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 48, ActualFileName = "Partnership Financials.xlsx",       CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 49, ActualFileName = "Sole Prop Financials.xlsx",         CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" });
                 });
 
             modelBuilder.Entity("DeskCloudCompare.Models.MasterFileException", b =>
