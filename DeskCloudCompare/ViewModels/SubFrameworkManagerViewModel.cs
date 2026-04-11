@@ -372,13 +372,21 @@ public partial class SubFrameworkManagerViewModel : ObservableObject
             .OrderBy(f => f.RelativePath)
             .ToListAsync();
 
-        var refEntry = entries.FirstOrDefault(e =>
-            presences.Any(p => p.MasterFrameworkEntryId == e.Id && p.BinaryHash != null));
-        var refHashes = refEntry == null
-            ? new Dictionary<int, string?>()
-            : presences
-                .Where(p => p.MasterFrameworkEntryId == refEntry.Id && p.BinaryHash != null)
-                .ToDictionary(p => p.MasterCanonicalFileId, p => p.BinaryHash);
+        // For each canonical file, use the first non-null hash from whichever framework
+        // has it (ordered by sort position).  A single global refEntry is wrong because
+        // the chosen framework may not contain certain files (e.g. it is absent there and
+        // marked as an exception), leaving those files with no reference hash and causing
+        // all other frameworks' copies to show "✓" instead of being compared.
+        var entryOrder = entries.Select((e, i) => (e.Id, i))
+                                .ToDictionary(x => x.Id, x => x.i);
+        var refHashes = presences
+            .Where(p => p.BinaryHash != null)
+            .GroupBy(p => p.MasterCanonicalFileId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(p => entryOrder.TryGetValue(p.MasterFrameworkEntryId, out var idx)
+                                    ? idx : int.MaxValue)
+                      .First().BinaryHash);
 
         // Pre-compute which files were reached via an alias in at least one framework
         var aliasedFileIds = presences

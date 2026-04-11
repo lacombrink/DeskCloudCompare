@@ -12,6 +12,10 @@ namespace DeskCloudCompare.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // Guard against re-insertion if the row already exists (e.g. leftover from a
+            // failed previous migration run that wasn't recorded in __EFMigrationsHistory).
+            migrationBuilder.Sql("DELETE FROM MasterFileAliases WHERE Id = 50");
+
             migrationBuilder.InsertData(
                 table: "MasterFileAliases",
                 columns: new[] { "Id", "ActualFileName", "CanonicalFileName", "FolderPath" },
