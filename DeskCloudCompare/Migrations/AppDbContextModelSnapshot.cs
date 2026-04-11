@@ -532,7 +532,8 @@ namespace DeskCloudCompare.Migrations
                         new { Id = 46, ActualFileName = "Charity Financials.xlsx",           CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
                         new { Id = 47, ActualFileName = "LLP Financials.xlsx",               CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
                         new { Id = 48, ActualFileName = "Partnership Financials.xlsx",       CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
-                        new { Id = 49, ActualFileName = "Sole Prop Financials.xlsx",         CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" });
+                        new { Id = 49, ActualFileName = "Sole Prop Financials.xlsx",         CanonicalFileName = "FRS102 Financials.xlsx",           FolderPath = "Financial Data\\DraftworX Files" },
+                        new { Id = 50, ActualFileName = "Monthly+ Manpack.xlsx",             CanonicalFileName = "IFRS+ Financials.xlsx",            FolderPath = "Financial Data\\DraftworX Files" });
                 });
 
             modelBuilder.Entity("DeskCloudCompare.Models.MasterFileException", b =>

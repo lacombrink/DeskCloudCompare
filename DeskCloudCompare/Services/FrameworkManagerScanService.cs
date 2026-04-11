@@ -77,7 +77,6 @@ public class FrameworkManagerScanService(AppDbContext db)
             canonicalName.Contains("IFRS SME+", StringComparison.OrdinalIgnoreCase) ||
             canonicalName.Equals("Body Corp+", StringComparison.OrdinalIgnoreCase) ||
             canonicalName.Equals("CC+", StringComparison.OrdinalIgnoreCase) ||
-            canonicalName.StartsWith("Monthly+ Manpack", StringComparison.OrdinalIgnoreCase) ||
             canonicalName.Equals("NPC+", StringComparison.OrdinalIgnoreCase) ||
             canonicalName.Equals("NPO+", StringComparison.OrdinalIgnoreCase) ||
             canonicalName.Equals("Partnership+", StringComparison.OrdinalIgnoreCase) ||

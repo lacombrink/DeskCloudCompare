@@ -252,7 +252,8 @@ public class AppDbContext : DbContext
             new MasterFileAlias { Id = 46, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Charity Financials.xlsx",             CanonicalFileName = "FRS102 Financials.xlsx" },
             new MasterFileAlias { Id = 47, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "LLP Financials.xlsx",                 CanonicalFileName = "FRS102 Financials.xlsx" },
             new MasterFileAlias { Id = 48, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Partnership Financials.xlsx",         CanonicalFileName = "FRS102 Financials.xlsx" },
-            new MasterFileAlias { Id = 49, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Sole Prop Financials.xlsx",           CanonicalFileName = "FRS102 Financials.xlsx" }
+            new MasterFileAlias { Id = 49, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Sole Prop Financials.xlsx",           CanonicalFileName = "FRS102 Financials.xlsx" },
+            new MasterFileAlias { Id = 50, FolderPath = @"Financial Data\DraftworX Files", ActualFileName = "Monthly+ Manpack.xlsx",               CanonicalFileName = "IFRS+ Financials.xlsx" }
         );
 
         modelBuilder.Entity<CountryFileException>(e =>
