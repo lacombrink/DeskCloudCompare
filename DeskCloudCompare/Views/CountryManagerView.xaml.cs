@@ -105,14 +105,16 @@ public partial class CountryManagerView : UserControl
         // "Framework" column (global views) — fixed width
         if (name == "Framework")
         {
-            e.Column.Width = 260;
+            e.Column.Width = 280;
+            e.Column.MinWidth = 160;
             return;
         }
 
-        // "File" column — wide
+        // "File" column — wide fixed width (supports horizontal scrolling)
         if (name == "File")
         {
-            e.Column.Width = new DataGridLength(1, DataGridLengthUnitType.Star);
+            e.Column.Width = 380;
+            e.Column.MinWidth = 180;
             return;
         }
 
@@ -189,15 +191,31 @@ public partial class CountryManagerView : UserControl
     }
 
     // -----------------------------------------------------------------------
-    // Right-click context menu — exception marking
+    // Right-click context menu — exception marking / removal / canonical alias creation
     // -----------------------------------------------------------------------
 
     private async void FileGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (Vm == null) return;
 
-        // Walk up the visual tree to find the clicked DataGridCell
         var cell = FindVisualParent<DataGridCell>((DependencyObject)e.OriginalSource);
+
+        // ---- Multi-select: canonical alias creation ----
+        var selectedRows = _fileGrid.SelectedItems.OfType<DataRowView>().ToList();
+        if (selectedRows.Count > 1)
+        {
+            var aliasMenu = new ContextMenu();
+            var aliasItem = new MenuItem { Header = $"Create canonical alias from {selectedRows.Count} selected files…" };
+            aliasItem.Click += async (_, _) => await ShowCanonicalAliasDialogAsync(selectedRows);
+            aliasMenu.Items.Add(aliasItem);
+            aliasMenu.PlacementTarget = cell ?? (UIElement)sender;
+            aliasMenu.Placement = PlacementMode.MousePoint;
+            aliasMenu.IsOpen = true;
+            e.Handled = true;
+            return;
+        }
+
+        // Walk up the visual tree to find the clicked DataGridCell
         if (cell == null) return;
 
         var countryCode = cell.Column?.Header?.ToString() ?? string.Empty;
@@ -209,59 +227,138 @@ public partial class CountryManagerView : UserControl
         if (cell.DataContext is not DataRowView drv) return;
 
         var cellValue = drv[countryCode]?.ToString() ?? string.Empty;
-
-        // Only show menu on X cells (framework applicable, file missing, no exception)
-        if (cellValue != "X") return;
-
         var fileId = (int)drv["_FileId"];
         var fileName = System.IO.Path.GetFileName(drv["File"]?.ToString() ?? string.Empty);
 
-        // Collect all X cells in this row (framework applicable + missing + no exception)
-        var allMissingCodes = _fileGrid.Columns
-            .Select(col => col.Header?.ToString() ?? string.Empty)
-            .Where(h => h.Length > 0 && h.Length <= 3 && !h.StartsWith("_"))
-            .Where(h => drv[h]?.ToString() == "X")
-            .ToList();
-
         var menu = new ContextMenu();
 
-        var item1 = new MenuItem { Header = $"Mark exception for {countryCode} only" };
-        item1.Click += async (_, _) => await Vm.MarkExceptionAsync(fileId, countryCode);
-        menu.Items.Add(item1);
-
-        if (allMissingCodes.Count > 1)
+        if (cellValue == "X")
         {
-            var item2 = new MenuItem
+            var allMissingCodes = _fileGrid.Columns
+                .Select(col => col.Header?.ToString() ?? string.Empty)
+                .Where(h => h.Length > 0 && h.Length <= 3 && !h.StartsWith("_"))
+                .Where(h => drv[h]?.ToString() == "X")
+                .ToList();
+
+            var item1 = new MenuItem { Header = $"Mark exception for {countryCode} only" };
+            item1.Click += async (_, _) => await Vm.MarkExceptionAsync(fileId, countryCode);
+            menu.Items.Add(item1);
+
+            if (allMissingCodes.Count > 1)
             {
-                Header = $"Mark all missing countries as exception ({allMissingCodes.Count} countries)"
-            };
-            item2.Click += async (_, _) => await Vm.MarkRowExceptionsAsync(fileId, allMissingCodes);
-            menu.Items.Add(item2);
+                var item2 = new MenuItem { Header = $"Mark all missing countries as exception ({allMissingCodes.Count} countries)" };
+                item2.Click += async (_, _) => await Vm.MarkRowExceptionsAsync(fileId, allMissingCodes);
+                menu.Items.Add(item2);
+            }
+
+            var item3 = new MenuItem { Header = $"Mark all frameworks — '{fileName}' missing in {countryCode}" };
+            item3.Click += async (_, _) =>
+                await Vm.MarkAllFrameworksExceptionsAsync(fileName, new[] { countryCode });
+            menu.Items.Add(item3);
+
+            if (allMissingCodes.Count > 1)
+            {
+                var item4 = new MenuItem { Header = $"Mark all frameworks — '{fileName}' missing in all {allMissingCodes.Count} countries" };
+                item4.Click += async (_, _) =>
+                    await Vm.MarkAllFrameworksExceptionsAsync(fileName, allMissingCodes);
+                menu.Items.Add(item4);
+            }
         }
-
-        var item3 = new MenuItem
+        else if (cellValue == "E")
         {
-            Header = $"Mark all frameworks — '{fileName}' missing in {countryCode}"
-        };
-        item3.Click += async (_, _) =>
-            await Vm.MarkAllFrameworksExceptionsAsync(fileName, new[] { countryCode });
-        menu.Items.Add(item3);
+            var allExceptionCodes = _fileGrid.Columns
+                .Select(col => col.Header?.ToString() ?? string.Empty)
+                .Where(h => h.Length > 0 && h.Length <= 3 && !h.StartsWith("_"))
+                .Where(h => drv[h]?.ToString() == "E")
+                .ToList();
 
-        if (allMissingCodes.Count > 1)
-        {
-            var item4 = new MenuItem
+            var item1 = new MenuItem { Header = $"Remove exception for {countryCode}" };
+            item1.Click += async (_, _) => await Vm.RemoveExceptionAsync(fileId, countryCode);
+            menu.Items.Add(item1);
+
+            if (allExceptionCodes.Count > 1)
             {
-                Header = $"Mark all frameworks — '{fileName}' missing in all {allMissingCodes.Count} countries"
-            };
-            item4.Click += async (_, _) =>
-                await Vm.MarkAllFrameworksExceptionsAsync(fileName, allMissingCodes);
-            menu.Items.Add(item4);
+                var item2 = new MenuItem { Header = $"Remove all {allExceptionCodes.Count} exceptions for this file" };
+                item2.Click += async (_, _) => await Vm.RemoveRowExceptionsAsync(fileId, allExceptionCodes);
+                menu.Items.Add(item2);
+            }
+        }
+        else
+        {
+            return;
         }
 
         menu.PlacementTarget = cell;
         menu.Placement = PlacementMode.MousePoint;
         menu.IsOpen = true;
         e.Handled = true;
+    }
+
+    private async Task ShowCanonicalAliasDialogAsync(List<DataRowView> selectedRows)
+    {
+        if (Vm == null) return;
+
+        var fileIds = selectedRows.Select(r => (int)r["_FileId"]).ToList();
+        var fileNames = selectedRows.Select(r => r["File"]?.ToString() ?? string.Empty).ToList();
+
+        var dialog = new Window
+        {
+            Title = "Select canonical (master) file name",
+            Width = 600,
+            Height = 300,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = Window.GetWindow(this),
+            ResizeMode = ResizeMode.NoResize
+        };
+
+        var panel = new StackPanel { Margin = new Thickness(16) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Choose which file name is the canonical (master) name.\nAll other selected files will alias to this one.",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12)
+        });
+
+        var listBox = new ListBox { Height = 150 };
+        for (int i = 0; i < fileNames.Count; i++)
+            listBox.Items.Add(new ListBoxItem { Content = fileNames[i], Tag = fileIds[i] });
+        listBox.SelectedIndex = 0;
+        panel.Children.Add(listBox);
+
+        var btnPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        var okBtn = new Button { Content = "Create Alias", Padding = new Thickness(16, 4, 16, 4), IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+        var cancelBtn = new Button { Content = "Cancel", Padding = new Thickness(16, 4, 16, 4), IsCancel = true };
+        btnPanel.Children.Add(okBtn);
+        btnPanel.Children.Add(cancelBtn);
+        panel.Children.Add(btnPanel);
+        dialog.Content = panel;
+
+        bool confirmed = false;
+        okBtn.Click += (_, _) => { confirmed = true; dialog.Close(); };
+        cancelBtn.Click += (_, _) => { dialog.Close(); };
+        dialog.ShowDialog();
+
+        if (!confirmed || listBox.SelectedItem is not ListBoxItem selectedItem) return;
+
+        var masterFileId = (int)selectedItem.Tag;
+        var (success, error) = await Vm.ValidateAndCreateCanonicalAliasAsync(fileIds, masterFileId);
+
+        if (success)
+        {
+            _fileGrid.SelectedItems.Clear();
+            MessageBox.Show("Canonical alias created successfully.", "Success",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else
+        {
+            MessageBox.Show(error, "Invalid Selection",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private static T? FindVisualParent<T>(DependencyObject child) where T : DependencyObject

@@ -99,7 +99,8 @@ public partial class FrameworkManagerView : UserControl
 
         if (name == "File")
         {
-            e.Column.Width = new DataGridLength(1, DataGridLengthUnitType.Star);
+            e.Column.Width = 420;
+            e.Column.MinWidth = 200;
             return;
         }
 

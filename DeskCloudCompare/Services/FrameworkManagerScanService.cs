@@ -134,9 +134,10 @@ public class FrameworkManagerScanService(AppDbContext db)
         db.ChangeTracker.Clear();
 
         // Load aliases into a lookup: (folderPath, actualFileName) → canonicalFileName
+        // Normalize path separators so Windows '\' and '/' variants both match.
         var aliases = await db.MasterFileAliases.ToListAsync(ct);
         var aliasLookup = aliases.ToDictionary(
-            a => (a.FolderPath.ToUpperInvariant(), a.ActualFileName.ToUpperInvariant()),
+            a => (NormSep(a.FolderPath), a.ActualFileName.ToUpperInvariant()),
             a => a.CanonicalFileName);
 
         var frameworksDir = Path.Combine(masterFolderPath, "NewUserData", "Frameworks");
@@ -216,7 +217,7 @@ public class FrameworkManagerScanService(AppDbContext db)
             var folderRel = Path.GetDirectoryName(relativePath) ?? string.Empty;
 
             // Resolve alias: does this file name map to a canonical name?
-            var aliasKey = (folderRel.ToUpperInvariant(), fileName.ToUpperInvariant());
+            var aliasKey = (NormSep(folderRel), fileName.ToUpperInvariant());
             var canonicalFileName = aliasLookup.TryGetValue(aliasKey, out var mapped)
                 ? mapped
                 : fileName;
@@ -317,6 +318,10 @@ public class FrameworkManagerScanService(AppDbContext db)
         var hash = await sha.ComputeHashAsync(stream, ct);
         return Convert.ToHexString(hash);
     }
+
+    /// <summary>Normalize path separators to OS separator and uppercase, for alias key comparison.</summary>
+    private static string NormSep(string path) =>
+        path.Replace('/', Path.DirectorySeparatorChar).ToUpperInvariant();
 }
 
 file sealed class TypeGroupPathComparer

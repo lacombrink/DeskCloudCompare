@@ -8,6 +8,7 @@ using Microsoft.Win32;
 using System.Data;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace DeskCloudCompare.ViewModels;
 
@@ -457,6 +458,139 @@ public partial class CountryManagerViewModel : ObservableObject
 
     private bool IsException(string frameworkName, FrameworkCategory category, string relPath, string countryCode) =>
         _exceptions.Contains((frameworkName, category, relPath, countryCode));
+
+    /// <summary>
+    /// Remove a single exception from the country manager file grid.
+    /// </summary>
+    public async Task RemoveExceptionAsync(int fileId, string countryCode)
+    {
+        var file = await _db.CanonicalFiles
+            .Include(f => f.CanonicalFramework)
+            .FirstOrDefaultAsync(f => f.Id == fileId);
+        if (file == null) return;
+
+        var ex = await _db.CountryFileExceptions.FirstOrDefaultAsync(e =>
+            e.FrameworkName == file.CanonicalFramework.Name &&
+            e.FrameworkCategory == file.CanonicalFramework.Category &&
+            e.RelativePath == file.RelativePath &&
+            e.CountryCode == countryCode);
+
+        if (ex != null)
+        {
+            _db.CountryFileExceptions.Remove(ex);
+            _exceptions.Remove((file.CanonicalFramework.Name, file.CanonicalFramework.Category,
+                file.RelativePath, countryCode));
+            await _db.SaveChangesAsync();
+        }
+        await BuildFileDetailTableAsync(SelectedFrameworkId);
+    }
+
+    /// <summary>
+    /// Remove all exceptions for a file in the supplied country codes.
+    /// </summary>
+    public async Task RemoveRowExceptionsAsync(int fileId, IEnumerable<string> countryCodes)
+    {
+        var file = await _db.CanonicalFiles
+            .Include(f => f.CanonicalFramework)
+            .FirstOrDefaultAsync(f => f.Id == fileId);
+        if (file == null) return;
+
+        foreach (var cc in countryCodes)
+        {
+            var ex = await _db.CountryFileExceptions.FirstOrDefaultAsync(e =>
+                e.FrameworkName == file.CanonicalFramework.Name &&
+                e.FrameworkCategory == file.CanonicalFramework.Category &&
+                e.RelativePath == file.RelativePath &&
+                e.CountryCode == cc);
+            if (ex != null)
+            {
+                _db.CountryFileExceptions.Remove(ex);
+                _exceptions.Remove((file.CanonicalFramework.Name, file.CanonicalFramework.Category,
+                    file.RelativePath, cc));
+            }
+        }
+        await _db.SaveChangesAsync();
+        await BuildFileDetailTableAsync(SelectedFrameworkId);
+    }
+
+    /// <summary>
+    /// Merge selected canonical files into a master, reassigning all country presences.
+    /// Also creates a MasterFileAlias entry so future Framework Manager scans auto-merge.
+    /// Returns (true, "") on success or (false, errorMessage) on failure.
+    /// </summary>
+    public async Task<(bool success, string error)> ValidateAndCreateCanonicalAliasAsync(
+        List<int> fileIds, int masterFileId)
+    {
+        if (fileIds.Count < 2)
+            return (false, "Select at least two files to create a canonical alias.");
+
+        // Validate: no country should have both files for the same framework
+        var presences = await _db.CountryFilePresences
+            .Where(p => fileIds.Contains(p.CanonicalFileId))
+            .ToListAsync();
+
+        var conflict = presences
+            .GroupBy(p => p.CountryCode)
+            .FirstOrDefault(g => g.Select(p => p.CanonicalFileId).Distinct().Count() > 1);
+
+        if (conflict != null)
+            return (false, "Invalid selection for canonical creation: at least one country has more than one of the selected files.");
+
+        var masterFile = await _db.CanonicalFiles
+            .Include(f => f.CanonicalFramework)
+            .FirstOrDefaultAsync(f => f.Id == masterFileId);
+        if (masterFile == null)
+            return (false, "Master file not found.");
+
+        var slaveFileIds = fileIds.Where(id => id != masterFileId).ToList();
+        var slaveFiles = await _db.CanonicalFiles
+            .Where(f => slaveFileIds.Contains(f.Id))
+            .Include(f => f.Presences)
+            .ToListAsync();
+
+        var masterCountryCodes = presences
+            .Where(p => p.CanonicalFileId == masterFileId)
+            .Select(p => p.CountryCode)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var slave in slaveFiles)
+        {
+            // Create a MasterFileAlias so future Framework Manager scans auto-merge
+            var folderPath = Path.GetDirectoryName(slave.RelativePath)
+                             ?.Replace('/', Path.DirectorySeparatorChar) ?? string.Empty;
+            var slaveFileName = Path.GetFileName(slave.RelativePath);
+            var masterFileName = Path.GetFileName(masterFile.RelativePath);
+
+            var existingAlias = await _db.MasterFileAliases.FirstOrDefaultAsync(a =>
+                a.FolderPath == folderPath && a.ActualFileName == slaveFileName);
+
+            if (existingAlias == null)
+                _db.MasterFileAliases.Add(new MasterFileAlias
+                {
+                    FolderPath = folderPath,
+                    ActualFileName = slaveFileName,
+                    CanonicalFileName = masterFileName
+                });
+            else
+                existingAlias.CanonicalFileName = masterFileName;
+
+            // Reassign or remove country presences
+            foreach (var presence in slave.Presences.ToList())
+            {
+                if (masterCountryCodes.Contains(presence.CountryCode))
+                    _db.CountryFilePresences.Remove(presence);
+                else
+                    presence.CanonicalFileId = masterFileId;
+            }
+
+            _db.CanonicalFiles.Remove(slave);
+        }
+
+        await _db.SaveChangesAsync();
+        if (SelectedFrameworkId > 0)
+            await BuildFileDetailTableAsync(SelectedFrameworkId);
+        return (true, string.Empty);
+    }
 
     /// <summary>
     /// Countries that actually have the currently-selected framework.

@@ -5,6 +5,7 @@ using DeskCloudCompare.Models;
 using DeskCloudCompare.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
+using System.IO;
 using System.Windows;
 
 namespace DeskCloudCompare.ViewModels;
@@ -223,6 +224,78 @@ public partial class SubFrameworkManagerViewModel : ObservableObject
         }
         await _db.SaveChangesAsync();
         await BuildFileDetailTableAsync(_selectedSubGroup);
+    }
+
+    /// <summary>
+    /// Validate and collapse selected files into a single canonical.
+    /// Returns (true, "") on success or (false, errorMessage) on failure.
+    /// </summary>
+    public async Task<(bool success, string error)> ValidateAndCreateCanonicalAliasAsync(
+        List<int> fileIds, int masterFileId)
+    {
+        if (fileIds.Count < 2)
+            return (false, "Select at least two files to create a canonical alias.");
+
+        var presences = await _db.MasterFilePresences
+            .Where(p => fileIds.Contains(p.MasterCanonicalFileId))
+            .ToListAsync();
+
+        var conflict = presences
+            .GroupBy(p => p.MasterFrameworkEntryId)
+            .FirstOrDefault(g => g.Select(p => p.MasterCanonicalFileId).Distinct().Count() > 1);
+
+        if (conflict != null)
+            return (false, "Invalid selection for canonical creation: at least one framework has more than one of the selected files in the same folder.");
+
+        var masterFile = await _db.MasterCanonicalFiles.FindAsync(masterFileId);
+        if (masterFile == null)
+            return (false, "Master file not found.");
+
+        var slaveFileIds = fileIds.Where(id => id != masterFileId).ToList();
+        var slaveFiles = await _db.MasterCanonicalFiles
+            .Where(f => slaveFileIds.Contains(f.Id))
+            .Include(f => f.Presences)
+            .ToListAsync();
+
+        var masterPresenceFrameworkIds = presences
+            .Where(p => p.MasterCanonicalFileId == masterFileId)
+            .Select(p => p.MasterFrameworkEntryId)
+            .ToHashSet();
+
+        foreach (var slave in slaveFiles)
+        {
+            var folderPath = Path.GetDirectoryName(slave.RelativePath)
+                             ?.Replace('/', Path.DirectorySeparatorChar) ?? string.Empty;
+            var slaveFileName = Path.GetFileName(slave.RelativePath);
+            var masterFileName = Path.GetFileName(masterFile.RelativePath);
+
+            var existingAlias = await _db.MasterFileAliases.FirstOrDefaultAsync(a =>
+                a.FolderPath == folderPath && a.ActualFileName == slaveFileName);
+
+            if (existingAlias == null)
+                _db.MasterFileAliases.Add(new MasterFileAlias
+                {
+                    FolderPath = folderPath,
+                    ActualFileName = slaveFileName,
+                    CanonicalFileName = masterFileName
+                });
+            else
+                existingAlias.CanonicalFileName = masterFileName;
+
+            foreach (var presence in slave.Presences.ToList())
+            {
+                if (masterPresenceFrameworkIds.Contains(presence.MasterFrameworkEntryId))
+                    _db.MasterFilePresences.Remove(presence);
+                else
+                    presence.MasterCanonicalFileId = masterFileId;
+            }
+
+            _db.MasterCanonicalFiles.Remove(slave);
+        }
+
+        await _db.SaveChangesAsync();
+        await BuildFileDetailTableAsync(_selectedSubGroup);
+        return (true, string.Empty);
     }
 
     public bool IsException(SubFrameworkGroup sg, string relPath, string frameworkName) =>

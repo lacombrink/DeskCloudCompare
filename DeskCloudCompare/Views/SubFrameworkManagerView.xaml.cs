@@ -105,7 +105,8 @@ public partial class SubFrameworkManagerView : UserControl
 
         if (name == "File")
         {
-            e.Column.Width = new DataGridLength(1, DataGridLengthUnitType.Star);
+            e.Column.Width = 420;
+            e.Column.MinWidth = 200;
             return;
         }
 
@@ -170,6 +171,22 @@ public partial class SubFrameworkManagerView : UserControl
     {
         if (Vm == null) return;
         var cell = FindVisualParent<DataGridCell>((DependencyObject)e.OriginalSource);
+
+        // ---- Multi-select: canonical alias creation ----
+        var selectedRows = _fileGrid.SelectedItems.OfType<DataRowView>().ToList();
+        if (selectedRows.Count > 1)
+        {
+            var aliasMenu = new ContextMenu();
+            var aliasItem = new MenuItem { Header = $"Create canonical alias from {selectedRows.Count} selected files…" };
+            aliasItem.Click += async (_, _) => await ShowCanonicalAliasDialogAsync(selectedRows);
+            aliasMenu.Items.Add(aliasItem);
+            aliasMenu.PlacementTarget = cell ?? (UIElement)sender;
+            aliasMenu.Placement = PlacementMode.MousePoint;
+            aliasMenu.IsOpen = true;
+            e.Handled = true;
+            return;
+        }
+
         if (cell == null) return;
         var frameworkName = cell.Column?.Header?.ToString() ?? string.Empty;
         if (frameworkName.Length == 0 || frameworkName == "File") return;
@@ -226,6 +243,73 @@ public partial class SubFrameworkManagerView : UserControl
         menu.Placement = PlacementMode.MousePoint;
         menu.IsOpen = true;
         e.Handled = true;
+    }
+
+    private async Task ShowCanonicalAliasDialogAsync(List<DataRowView> selectedRows)
+    {
+        if (Vm == null) return;
+
+        var fileIds = selectedRows.Select(r => (int)r["_FileId"]).ToList();
+        var fileNames = selectedRows.Select(r => r["File"]?.ToString() ?? string.Empty).ToList();
+
+        var dialog = new Window
+        {
+            Title = "Select canonical (master) file name",
+            Width = 600,
+            Height = 300,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = Window.GetWindow(this),
+            ResizeMode = ResizeMode.NoResize
+        };
+
+        var panel = new StackPanel { Margin = new Thickness(16) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Choose which file name is the canonical (master) name.\nAll other selected files will alias to this one.",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 12)
+        });
+
+        var listBox = new ListBox { Height = 150 };
+        for (int i = 0; i < fileNames.Count; i++)
+            listBox.Items.Add(new ListBoxItem { Content = fileNames[i], Tag = fileIds[i] });
+        listBox.SelectedIndex = 0;
+        panel.Children.Add(listBox);
+
+        var btnPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        var okBtn = new Button { Content = "Create Alias", Padding = new Thickness(16, 4, 16, 4), IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+        var cancelBtn = new Button { Content = "Cancel", Padding = new Thickness(16, 4, 16, 4), IsCancel = true };
+        btnPanel.Children.Add(okBtn);
+        btnPanel.Children.Add(cancelBtn);
+        panel.Children.Add(btnPanel);
+        dialog.Content = panel;
+
+        bool confirmed = false;
+        okBtn.Click += (_, _) => { confirmed = true; dialog.Close(); };
+        cancelBtn.Click += (_, _) => { dialog.Close(); };
+        dialog.ShowDialog();
+
+        if (!confirmed || listBox.SelectedItem is not ListBoxItem selectedItem) return;
+
+        var masterFileId = (int)selectedItem.Tag;
+        var (success, error) = await Vm.ValidateAndCreateCanonicalAliasAsync(fileIds, masterFileId);
+
+        if (success)
+        {
+            _fileGrid.SelectedItems.Clear();
+            MessageBox.Show("Canonical alias created successfully.", "Success",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else
+        {
+            MessageBox.Show(error, "Invalid Selection",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private static T? FindVisualParent<T>(DependencyObject child) where T : DependencyObject
