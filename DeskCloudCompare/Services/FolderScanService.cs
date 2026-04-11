@@ -33,6 +33,13 @@ public class FolderScanService
     private static readonly HashSet<string> ExcludedExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".dxdb", ".csv" };
 
+    /// <summary>
+    /// Canonical folder names that are always excluded from comparison regardless of preset.
+    /// Matched as whole path segments so "999.ZZ" won't accidentally match "1999.ZZ".
+    /// </summary>
+    private static readonly HashSet<string> ExcludedFolderSegments =
+        new(StringComparer.OrdinalIgnoreCase) { "999.ZZ" };
+
     public async Task<List<ComparisonRow>> ScanAsync(
         IReadOnlyList<SlotConfig> slots,
         IEnumerable<PathTranslationRule> rules,
@@ -77,7 +84,8 @@ public class FolderScanService
                         ? PathTranslationService.Normalize(relPath, slot.FolderTypeId.Value, rulesList)
                         : relPath;
 
-                    if (IsExcluded(canonical, exclusionList))
+                    if (IsExcluded(canonical, exclusionList) ||
+                        HasExcludedSegment(canonical))
                         continue;
 
                     var info = new FileInfo(fullPath);
@@ -220,6 +228,19 @@ public class FolderScanService
             };
             if (matched) return true;
         }
+        return false;
+    }
+
+    /// <summary>
+    /// Returns true if any folder segment of <paramref name="canonicalPath"/> is in
+    /// <see cref="ExcludedFolderSegments"/>. Segments are split on both separators so
+    /// the check works regardless of the normalised path format.
+    /// </summary>
+    private static bool HasExcludedSegment(string canonicalPath)
+    {
+        foreach (var seg in canonicalPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries))
+            if (ExcludedFolderSegments.Contains(seg))
+                return true;
         return false;
     }
 }
