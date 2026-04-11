@@ -96,6 +96,20 @@ public class PathTranslationService(AppDbContext db)
     private static readonly HashSet<string> _underscoreSuffixCountries =
         new(StringComparer.OrdinalIgnoreCase) { "GG", "JE", "IE" };
 
+    // First-level subfolders whose Desktop contents live inside a "DraftworX Files"
+    // sub-folder that the Desktop→Canonical rule 31 strips.  When reversing, we must
+    // re-insert \DraftworX Files\ after these folder names.
+    private static readonly HashSet<string> _draftworxParentFolders =
+        new(StringComparer.OrdinalIgnoreCase)
+        { "Financial Data", "Lead Schedules", "Documents", "Audit Programs" };
+
+    // Files that sit directly at the framework root on Desktop under NewUserDataUpdates\
+    // rather than NewUserData\Frameworks\.  The Desktop rule at SortOrder 29 maps
+    // \NewUserDataUpdates\ → \Frameworks\, so the canonical path looks the same as a
+    // normal framework file — we distinguish them by filename.
+    private static readonly HashSet<string> _updatesRootFiles =
+        new(StringComparer.OrdinalIgnoreCase) { "Detail.xlsx", "Switch.xlsx" };
+
     /// <summary>
     /// Derives the Desktop-relative path from a canonical relative path, reversing the
     /// Desktop→Canonical rules.  Returns <c>null</c> when the path cannot be translated
@@ -178,8 +192,30 @@ public class PathTranslationService(AppDbContext db)
                 : frameworkFolder + suffix;
         }
 
+        // ── Fix 1: re-insert \DraftworX Files\ ─────────────────────────────────
+        // Desktop rule 31 strips "\DraftworX Files" from paths like
+        //   Financial Data\DraftworX Files\file.xlsx → Financial Data\file.xlsx
+        // Reverse: if "rest" starts with a known parent folder, insert the sub-folder back.
+        if (!string.IsNullOrEmpty(rest))
+        {
+            var restParts = rest.Split('\\');
+            if (restParts.Length >= 1 && _draftworxParentFolders.Contains(restParts[0]))
+                rest = restParts[0] + @"\DraftworX Files\" + string.Join('\\', restParts[1..]);
+        }
+
+        // ── Fix 2: NewUserDataUpdates for Detail.xlsx / Switch.xlsx ─────────────
+        // Desktop rule 29 maps \NewUserDataUpdates\ → \Frameworks\ so these files
+        // appear at canonical COUNTRY\Frameworks\FW\Detail.xlsx.  On Desktop they live
+        // at NUMERIC.COUNTRY\NewUserDataUpdates\FW_SUFFIX\Detail.xlsx — no "Frameworks"
+        // subfolder and no "NewUserData" parent.
+        var isUpdatesFile = !string.IsNullOrEmpty(rest) && _updatesRootFiles.Contains(rest);
+
         // Reconstruct Desktop-relative path:
-        //   {desktopRoot}\NewUserData\Frameworks\{frameworkDesktop}[\rest]
+        //   Updates:  {desktopRoot}\NewUserDataUpdates\{frameworkDesktop}\{file}
+        //   Regular:  {desktopRoot}\NewUserData\Frameworks\{frameworkDesktop}[\rest]
+        if (isUpdatesFile)
+            return $@"{desktopRoot}\NewUserDataUpdates\{frameworkDesktop}\{rest}";
+
         return string.IsNullOrEmpty(rest)
             ? $@"{desktopRoot}\NewUserData\Frameworks\{frameworkDesktop}"
             : $@"{desktopRoot}\NewUserData\Frameworks\{frameworkDesktop}\{rest}";
