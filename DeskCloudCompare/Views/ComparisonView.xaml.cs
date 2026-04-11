@@ -182,11 +182,20 @@ public partial class ComparisonView : UserControl
     }
 
     // 3. Physically copy files from one slot's path to the other slot's path.
-    //    Skips rows where either end is unknown (file missing in that slot).
-    private static void CopyFilesBetweenSlots(
+    //    When the destination file does not exist yet but the destination slot is a Desktop
+    //    slot, the Desktop path is derived from the canonical path (reversing the
+    //    Desktop→Canonical rules), directories are created, and the file is copied in.
+    private void CopyFilesBetweenSlots(
         List<ComparisonRowViewModel> rows, string fromSlot, string toSlot)
     {
-        int copied = 0, skipped = 0;
+        // Gather destination slot info so we can derive Desktop paths for new files.
+        var destSlotVm   = Vm?.Slots.FirstOrDefault(s => s.SlotLabel == toSlot);
+        var destRoot     = destSlotVm?.FolderPath;
+        var isDesktopDest = string.Equals(
+            destSlotVm?.SelectedFolderType?.Name, "Desktop",
+            StringComparison.OrdinalIgnoreCase);
+
+        int copied = 0, derived = 0, skipped = 0;
         var errors = new List<string>();
 
         foreach (var row in rows)
@@ -194,7 +203,26 @@ public partial class ComparisonView : UserControl
             var src = GetPath(row, fromSlot);
             var dst = GetPath(row, toSlot);
 
-            if (string.IsNullOrEmpty(src) || string.IsNullOrEmpty(dst))
+            if (string.IsNullOrEmpty(src))
+            {
+                skipped++;
+                continue;
+            }
+
+            // If the destination file doesn't exist yet and the slot is Desktop,
+            // derive the Desktop relative path from the canonical path and prepend
+            // the slot's configured root folder.
+            if (string.IsNullOrEmpty(dst) && isDesktopDest && !string.IsNullOrEmpty(destRoot))
+            {
+                var rel = PathTranslationService.DeriveDesktopRelativePath(row.CanonicalPath);
+                if (rel != null)
+                {
+                    dst = Path.Combine(destRoot, rel);
+                    derived++;
+                }
+            }
+
+            if (string.IsNullOrEmpty(dst))
             {
                 skipped++;
                 continue;
@@ -202,6 +230,7 @@ public partial class ComparisonView : UserControl
 
             try
             {
+                Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
                 File.Copy(src, dst, overwrite: true);
                 copied++;
             }
@@ -211,7 +240,9 @@ public partial class ComparisonView : UserControl
             }
         }
 
-        var msg = $"Copied: {copied}\nSkipped (path unknown in one slot): {skipped}";
+        var msg = $"Copied: {copied}";
+        if (derived > 0) msg += $" (including {derived} placed in new Desktop folders)";
+        msg += $"\nSkipped (path unknown in one slot): {skipped}";
         if (errors.Count > 0)
             msg += $"\n\nErrors ({errors.Count}):\n" +
                    string.Join("\n", errors.Take(10)) +
