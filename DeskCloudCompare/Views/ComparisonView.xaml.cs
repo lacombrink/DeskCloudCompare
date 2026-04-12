@@ -154,6 +154,20 @@ public partial class ComparisonView : UserControl
                 () => CopyFilesWithPath(rows, s)));
         }
         cm.Items.Add(copyWithPath);
+
+        cm.Items.Add(new Separator());
+
+        // 6. Delete Files → submenu per active slot
+        var deleteFiles = new MenuItem { Header = "Delete Files" };
+        foreach (var slot in active)
+        {
+            var s = slot;
+            int count = rows.Count(r => GetPath(r, s) != null && File.Exists(GetPath(r, s)));
+            deleteFiles.Items.Add(MakeItem(
+                $"From Slot {s}  ({count} files)",
+                () => DeleteFilesInSlot(rows, s)));
+        }
+        cm.Items.Add(deleteFiles);
     }
 
     private static MenuItem MakeItem(string header, Action onClick)
@@ -189,12 +203,12 @@ public partial class ComparisonView : UserControl
     private void CopyFilesBetweenSlots(
         List<ComparisonRowViewModel> rows, string fromSlot, string toSlot)
     {
-        // Gather destination slot info so we can derive Desktop paths for new files.
-        var destSlotVm   = Vm?.Slots.FirstOrDefault(s => s.SlotLabel == toSlot);
-        var destRoot     = destSlotVm?.FolderPath;
-        var isDesktopDest = string.Equals(
-            destSlotVm?.SelectedFolderType?.Name, "Desktop",
-            StringComparison.OrdinalIgnoreCase);
+        // Gather destination slot info so we can derive Desktop/Cloud paths for new files.
+        var destSlotVm    = Vm?.Slots.FirstOrDefault(s => s.SlotLabel == toSlot);
+        var destRoot      = destSlotVm?.FolderPath;
+        var destTypeName  = destSlotVm?.SelectedFolderType?.Name ?? string.Empty;
+        var isDesktopDest = string.Equals(destTypeName, "Desktop", StringComparison.OrdinalIgnoreCase);
+        var isCloudDest   = string.Equals(destTypeName, "Cloud",   StringComparison.OrdinalIgnoreCase);
 
         int copied = 0, derived = 0, skipped = 0;
         var errors = new List<string>();
@@ -210,12 +224,16 @@ public partial class ComparisonView : UserControl
                 continue;
             }
 
-            // If the destination file doesn't exist yet and the slot is Desktop,
-            // derive the Desktop relative path from the canonical path and prepend
-            // the slot's configured root folder.
-            if (string.IsNullOrEmpty(dst) && isDesktopDest && !string.IsNullOrEmpty(destRoot))
+            // If the destination file doesn't exist yet, derive its path from the
+            // canonical path and prepend the slot's configured root folder.
+            if (string.IsNullOrEmpty(dst) && !string.IsNullOrEmpty(destRoot))
             {
-                var rel = PathTranslationService.DeriveDesktopRelativePath(row.CanonicalPath);
+                string? rel = null;
+                if (isDesktopDest)
+                    rel = PathTranslationService.DeriveDesktopRelativePath(row.CanonicalPath);
+                else if (isCloudDest)
+                    rel = PathTranslationService.DeriveCloudRelativePath(row.CanonicalPath);
+
                 if (rel != null)
                 {
                     dst = Path.Combine(destRoot, rel);
@@ -241,8 +259,9 @@ public partial class ComparisonView : UserControl
             }
         }
 
+        var destLabel = isCloudDest ? "Cloud" : "Desktop";
         var msg = $"Copied: {copied}";
-        if (derived > 0) msg += $" (including {derived} placed in new Desktop folders)";
+        if (derived > 0) msg += $" (including {derived} placed in new {destLabel} folders)";
         msg += $"\nSkipped (path unknown in one slot): {skipped}";
         if (errors.Count > 0)
             msg += $"\n\nErrors ({errors.Count}):\n" +
@@ -319,6 +338,57 @@ public partial class ComparisonView : UserControl
                    (errors.Count > 10 ? $"\n…and {errors.Count - 10} more" : string.Empty);
 
         MessageBox.Show(msg, $"Copy Files with Path — Slot {slot}",
+            MessageBoxButton.OK,
+            errors.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+    }
+
+    // 6. Permanently delete the physical files for the selected rows in the given slot.
+    private static void DeleteFilesInSlot(List<ComparisonRowViewModel> rows, string slot)
+    {
+        var toDelete = rows
+            .Select(r => GetPath(r, slot))
+            .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
+            .ToList();
+
+        if (toDelete.Count == 0)
+        {
+            MessageBox.Show($"No existing files found in Slot {slot} for the selected rows.",
+                $"Delete Files — Slot {slot}", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            $"Permanently delete {toDelete.Count} file(s) from Slot {slot}?\n\nThis cannot be undone.",
+            $"Delete Files — Slot {slot}",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+
+        if (confirm != MessageBoxResult.Yes) return;
+
+        int deleted = 0;
+        var errors = new List<string>();
+
+        foreach (var path in toDelete)
+        {
+            try
+            {
+                File.Delete(path!);
+                deleted++;
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"{Path.GetFileName(path)}: {ex.Message}");
+            }
+        }
+
+        var msg = $"Deleted: {deleted}";
+        if (errors.Count > 0)
+            msg += $"\n\nErrors ({errors.Count}):\n" +
+                   string.Join("\n", errors.Take(10)) +
+                   (errors.Count > 10 ? $"\n…and {errors.Count - 10} more" : string.Empty);
+
+        MessageBox.Show(msg, $"Delete Files — Slot {slot}",
             MessageBoxButton.OK,
             errors.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
     }

@@ -220,4 +220,70 @@ public class PathTranslationService(AppDbContext db)
             ? $@"{desktopRoot}\NewUserData\Frameworks\{frameworkDesktop}"
             : $@"{desktopRoot}\NewUserData\Frameworks\{frameworkDesktop}\{rest}";
     }
+
+    /// <summary>
+    /// Derives the Cloud-relative path from a canonical relative path, reversing the
+    /// Cloud→Canonical rules.  Returns <c>null</c> when the path does not follow the
+    /// expected <c>COUNTRY\Frameworks\FRAMEWORK\…</c> structure.
+    /// </summary>
+    /// <remarks>
+    /// Non-UKI countries: Cloud paths are already canonical — no transformation needed.<br/>
+    /// UKI countries (GG, JE, IE): the Cloud rules strip the underscore country suffix
+    /// from framework folder names; this method adds it back.<br/>
+    /// GB frameworks with a <c>_GB</c> suffix: same treatment as GG/JE/IE.<br/>
+    /// GB frameworks with <c>_EW/_NI/_SC</c> suffixes: those are preserved in canonical
+    /// and require no change.<br/>
+    /// Detail.xlsx / Switch.xlsx: live under a <c>#Updates\</c> sub-folder in Cloud;
+    /// the Cloud rule strips that sub-folder so it must be reinserted here.
+    /// </remarks>
+    public static string? DeriveCloudRelativePath(string canonicalRelPath)
+    {
+        var path = canonicalRelPath.Replace('/', '\\').TrimStart('\\');
+
+        var segments = path.Split('\\');
+        if (segments.Length < 3) return null;
+        if (!string.Equals(segments[1], "Frameworks", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var countryRoot     = segments[0];
+        var frameworkFolder = segments[2];
+        var rest            = segments.Length > 3
+                              ? string.Join('\\', segments[3..])
+                              : string.Empty;
+
+        // ── Restore UKI framework folder suffix ──────────────────────────────────
+        // Cloud rules strip _GG\, _JE\, _IE\ and _GB\ from framework folder names.
+        // Add the suffix back so the cloud folder name matches what was originally there.
+        string frameworkCloud = frameworkFolder;
+
+        if (string.Equals(countryRoot, "GB", StringComparison.OrdinalIgnoreCase))
+        {
+            // EW/NI/SC suffixes are preserved in canonical — nothing to add.
+            // A _GB suffix WAS stripped by our Cloud rule; add it back if absent.
+            bool hasNationSuffix = new[] { "_EW", "_NI", "_SC", "_GB" }
+                .Any(s => frameworkFolder.EndsWith(s, StringComparison.OrdinalIgnoreCase));
+
+            if (!hasNationSuffix)
+                frameworkCloud = frameworkFolder + "_GB";
+        }
+        else if (_underscoreSuffixCountries.Contains(countryRoot)) // GG, JE, IE
+        {
+            var suffix = $"_{countryRoot}";
+            if (!frameworkFolder.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                frameworkCloud = frameworkFolder + suffix;
+        }
+        // Non-UKI countries: cloud folder name == canonical folder name, no change.
+
+        // ── Restore #Updates sub-folder for Detail.xlsx / Switch.xlsx ────────────
+        // Cloud rule 10 strips \#Updates\ so these files appear at the canonical
+        // framework root.  Add the sub-folder back for the cloud path.
+        string restCloud = rest;
+        if (!string.IsNullOrEmpty(rest) && _updatesRootFiles.Contains(rest))
+            restCloud = @"#Updates\" + rest;
+
+        // Cloud relative path: COUNTRY\Frameworks\FRAMEWORK_CLOUD[\rest_cloud]
+        return string.IsNullOrEmpty(restCloud)
+            ? $@"{countryRoot}\Frameworks\{frameworkCloud}"
+            : $@"{countryRoot}\Frameworks\{frameworkCloud}\{restCloud}";
+    }
 }
