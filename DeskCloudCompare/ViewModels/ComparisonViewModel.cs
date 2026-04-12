@@ -261,8 +261,19 @@ public partial class ComparisonViewModel : ObservableObject
                 done++;
                 StatusMessage = $"Binary compare {done}/{selected.Count}: {row.FileName}";
 
-                var result = await _binaryService.CompareAsync(row.SlotPaths, ct);
-                row.BinaryResult = result.AllIdentical ? "Identical" : "Different";
+                if (row.IsUpdatesMatch)
+                {
+                    // One Desktop file vs many Cloud copies — compare each copy against the master.
+                    var masterPath = row.SlotPaths.Values.FirstOrDefault(p => !string.IsNullOrEmpty(p));
+                    if (masterPath != null)
+                        row.BinaryResult = await _binaryService.CompareOneToManyAsync(
+                            masterPath, row.UpdatesCloudCopies, ct);
+                }
+                else
+                {
+                    var result = await _binaryService.CompareAsync(row.SlotPaths, ct);
+                    row.BinaryResult = result.AllIdentical ? "Identical" : "Different";
+                }
             }
             StatusMessage = $"Binary compare complete — {done} files compared.";
         }

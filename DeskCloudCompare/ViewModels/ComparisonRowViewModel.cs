@@ -34,8 +34,6 @@ public partial class ComparisonRowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelectedForBinaryCompare;
 
-    public bool NeedsCompare => Result != "All identical" && !IsOneToMany;
-
     /// <summary>True when this file exists once in one slot and N times in another slot.</summary>
     public bool IsOneToMany { get; }
 
@@ -44,6 +42,17 @@ public partial class ComparisonRowViewModel : ObservableObject
 
     /// <summary>Number of copies on the "many" side that match the master by size and date.</summary>
     public int OneToManyMatching { get; }
+
+    /// <summary>
+    /// True when a single Desktop file (at canonical {country}\Frameworks\{file}) matches
+    /// multiple Cloud files (at {country}\Frameworks\{fw}\{file}).  Row is highlighted green.
+    /// </summary>
+    public bool IsUpdatesMatch { get; }
+
+    /// <summary>Full paths of each Cloud copy for binary compare.</summary>
+    public IReadOnlyList<string> UpdatesCloudCopies { get; }
+
+    public bool NeedsCompare => IsUpdatesMatch || (Result != "All identical" && !IsOneToMany);
 
     // Raw paths for binary compare service
     public IReadOnlyDictionary<string, string?> SlotPaths => new Dictionary<string, string?>
@@ -78,9 +87,14 @@ public partial class ComparisonRowViewModel : ObservableObject
         OneToManyTotal = row.OneToManyTotalCopies;
         OneToManyMatching = row.OneToManyMatchingCopies;
 
-        Result = row.IsOneToMany
-            ? $"1→{row.OneToManyTotalCopies} copies ({row.OneToManyMatchingCopies}/{row.OneToManyTotalCopies} match)"
-            : ComputeResult(row, activeSlotLabels);
+        IsUpdatesMatch   = row.IsUpdatesMatch;
+        UpdatesCloudCopies = row.UpdatesCloudCopies;
+
+        Result = row.IsUpdatesMatch
+            ? $"1→{row.UpdatesTotalCopies} cloud copies ({row.UpdatesMatchingCopies}/{row.UpdatesTotalCopies} match)"
+            : row.IsOneToMany
+                ? $"1→{row.OneToManyTotalCopies} copies ({row.OneToManyMatchingCopies}/{row.OneToManyTotalCopies} match)"
+                : ComputeResult(row, activeSlotLabels);
     }
 
     private static string ComputeResult(ComparisonRow row, IReadOnlyList<string> activeSlots)

@@ -342,15 +342,16 @@ public partial class ComparisonView : UserControl
             errors.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
     }
 
-    // 6. Permanently delete the physical files for the selected rows in the given slot.
-    private static void DeleteFilesInSlot(List<ComparisonRowViewModel> rows, string slot)
+    // 6. Permanently delete the physical files for the selected rows in the given slot,
+    //    then remove the affected rows from the results list.
+    private void DeleteFilesInSlot(List<ComparisonRowViewModel> rows, string slot)
     {
-        var toDelete = rows
-            .Select(r => GetPath(r, slot))
-            .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
+        var candidates = rows
+            .Select(r => (Row: r, Path: GetPath(r, slot)))
+            .Where(x => !string.IsNullOrEmpty(x.Path) && File.Exists(x.Path))
             .ToList();
 
-        if (toDelete.Count == 0)
+        if (candidates.Count == 0)
         {
             MessageBox.Show($"No existing files found in Slot {slot} for the selected rows.",
                 $"Delete Files — Slot {slot}", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -358,7 +359,7 @@ public partial class ComparisonView : UserControl
         }
 
         var confirm = MessageBox.Show(
-            $"Permanently delete {toDelete.Count} file(s) from Slot {slot}?\n\nThis cannot be undone.",
+            $"Permanently delete {candidates.Count} file(s) from Slot {slot}?\n\nThis cannot be undone.",
             $"Delete Files — Slot {slot}",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning,
@@ -368,19 +369,25 @@ public partial class ComparisonView : UserControl
 
         int deleted = 0;
         var errors = new List<string>();
+        var deletedRows = new List<ComparisonRowViewModel>();
 
-        foreach (var path in toDelete)
+        foreach (var (row, path) in candidates)
         {
             try
             {
                 File.Delete(path!);
                 deleted++;
+                deletedRows.Add(row);
             }
             catch (Exception ex)
             {
                 errors.Add($"{Path.GetFileName(path)}: {ex.Message}");
             }
         }
+
+        // Remove rows whose file was deleted from the results list.
+        foreach (var row in deletedRows)
+            Vm?.Rows.Remove(row);
 
         var msg = $"Deleted: {deleted}";
         if (errors.Count > 0)

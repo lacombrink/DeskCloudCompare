@@ -107,6 +107,16 @@
                   PreviewKeyDown="ResultsGrid_PreviewKeyDown"
                   PreviewMouseRightButtonDown="ResultsGrid_PreviewMouseRightButtonDown"
                   ContextMenuOpening="ResultsGrid_ContextMenuOpening">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsUpdatesMatch}" Value="True">
+                            <Setter Property="Background" Value="#C8E6C9" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+
             <DataGrid.ContextMenu>
                 <ContextMenu />
             </DataGrid.ContextMenu>

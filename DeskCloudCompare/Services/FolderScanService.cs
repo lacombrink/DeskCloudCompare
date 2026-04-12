@@ -23,6 +23,12 @@ public class ComparisonRow
 
     // Set by FormatConversion detection
     public bool IsFormatConversion { get; set; }
+
+    // Set by ApplyUpdatesFilesMatch: one Desktop file matches many Cloud copies
+    public bool IsUpdatesMatch { get; set; }
+    public List<string> UpdatesCloudCopies { get; set; } = new();
+    public int UpdatesTotalCopies { get; set; }
+    public int UpdatesMatchingCopies { get; set; }
 }
 
 public class FolderScanService
@@ -113,6 +119,7 @@ public class FolderScanService
 
             // Post-process special rules
             ApplySpecialRules(dict, specialList);
+            ApplyUpdatesFilesMatch(dict);
 
         }, ct);
 
@@ -214,6 +221,86 @@ public class FolderScanService
             "D" => row.SlotD,
             _ => null
         };
+
+    private static SlotFileInfo? GetAnySlotInfo(ComparisonRow row) =>
+        row.SlotA ?? row.SlotB ?? row.SlotC ?? row.SlotD;
+
+    // Files that live directly under NewUserDataUpdates\ on Desktop (no framework subfolder)
+    // and under {framework}\#Updates\ on Cloud — one Desktop copy per country, many Cloud copies.
+    private static readonly HashSet<string> _updatesFileNames =
+        new(StringComparer.OrdinalIgnoreCase) { "Detail.xlsx", "Switch.xlsx" };
+
+    /// <summary>
+    /// Detects rows where a single Desktop file at canonical {country}\Frameworks\{file}
+    /// should be matched against multiple Cloud files at {country}\Frameworks\{fw}\{file}.
+    /// Consolidates them into a single "IsUpdatesMatch" summary row on the Desktop entry.
+    /// </summary>
+    private static void ApplyUpdatesFilesMatch(Dictionary<string, ComparisonRow> dict)
+    {
+        var updatesRows = dict.Values
+            .Where(r => _updatesFileNames.Contains(r.FileName) && !r.IsOneToMany)
+            .ToList();
+
+        if (updatesRows.Count == 0) return;
+
+        // Group by (country, filename) so we handle BW\Detail and ZA\Detail independently.
+        var groups = updatesRows.GroupBy(r =>
+        {
+            var segs = r.CanonicalPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            return (Country: segs.Length > 0 ? segs[0] : string.Empty, r.FileName);
+        });
+
+        foreach (var grp in groups)
+        {
+            var rows = grp.ToList();
+
+            // Shallow = {country}\Frameworks\{filename}  (3 segments — Desktop side)
+            var shallowRows = rows.Where(r =>
+            {
+                var s = r.CanonicalPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+                return s.Length == 3 &&
+                       string.Equals(s[1], "Frameworks", StringComparison.OrdinalIgnoreCase) &&
+                       string.Equals(s[2], r.FileName, StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+
+            // Deep = {country}\Frameworks\{framework}\{filename}  (4 segments — Cloud side)
+            var deepRows = rows.Where(r =>
+            {
+                var s = r.CanonicalPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+                return s.Length == 4 &&
+                       string.Equals(s[1], "Frameworks", StringComparison.OrdinalIgnoreCase) &&
+                       string.Equals(s[3], r.FileName, StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+
+            if (shallowRows.Count != 1 || deepRows.Count == 0) continue;
+
+            var masterRow  = shallowRows[0];
+            var masterInfo = GetAnySlotInfo(masterRow);
+            if (masterInfo == null) continue;
+
+            var cloudCopies = new List<string>();
+            int matchCount  = 0;
+
+            foreach (var deep in deepRows)
+            {
+                var info = GetAnySlotInfo(deep);
+                if (info == null) continue;
+                cloudCopies.Add(info.FullPath);
+                if (info.Size == masterInfo.Size && info.LastWrite == masterInfo.LastWrite)
+                    matchCount++;
+            }
+
+            if (cloudCopies.Count == 0) continue;
+
+            masterRow.IsUpdatesMatch       = true;
+            masterRow.UpdatesCloudCopies   = cloudCopies;
+            masterRow.UpdatesTotalCopies   = cloudCopies.Count;
+            masterRow.UpdatesMatchingCopies = matchCount;
+
+            foreach (var deep in deepRows)
+                dict.Remove(deep.CanonicalPath);
+        }
+    }
 
     private static bool IsExcluded(string canonicalPath, List<PresetExclusion> exclusions)
     {

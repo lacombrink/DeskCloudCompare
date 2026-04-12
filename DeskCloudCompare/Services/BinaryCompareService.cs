@@ -40,4 +40,50 @@ public class BinaryCompareService
 
         return new BinaryCompareResult(allIdentical, hashBySlot);
     }
+
+    /// <summary>
+    /// Hashes <paramref name="masterPath"/> then compares it against each path in
+    /// <paramref name="copyPaths"/>.  Returns "All identical", "N/M identical", or an
+    /// error string when the master file cannot be read.
+    /// </summary>
+    public async Task<string> CompareOneToManyAsync(
+        string masterPath,
+        IReadOnlyList<string> copyPaths,
+        CancellationToken ct = default)
+    {
+        string? masterHash = null;
+
+        await Task.Run(async () =>
+        {
+            if (!File.Exists(masterPath)) return;
+            using var sha = SHA256.Create();
+            await using var stream = new FileStream(
+                masterPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                BufferSize, FileOptions.SequentialScan);
+            masterHash = Convert.ToHexString(await sha.ComputeHashAsync(stream, ct));
+        }, ct);
+
+        if (masterHash == null) return "Master file not found";
+
+        int total = 0, identical = 0;
+
+        await Task.Run(async () =>
+        {
+            foreach (var path in copyPaths)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!File.Exists(path)) continue;
+                total++;
+                using var sha = SHA256.Create();
+                await using var stream = new FileStream(
+                    path, FileMode.Open, FileAccess.Read, FileShare.Read,
+                    BufferSize, FileOptions.SequentialScan);
+                if (Convert.ToHexString(await sha.ComputeHashAsync(stream, ct)) == masterHash)
+                    identical++;
+            }
+        }, ct);
+
+        if (total == 0) return "No cloud copies found";
+        return identical == total ? "All identical" : $"{identical}/{total} identical";
+    }
 }
